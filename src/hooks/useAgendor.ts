@@ -307,9 +307,9 @@ export function useDeletePerson() {
 
 /* ---------------------- Negócios ---------------------- */
 
-export function useDeals(pipelineId?: string | null) {
+export function useDeals(pipelineId?: string | null, ownerId?: string | null) {
   return useQuery({
-    queryKey: ["crm-deals", pipelineId ?? "all"],
+    queryKey: ["crm-deals", pipelineId ?? "all", ownerId ?? "all"],
     queryFn: async () => {
       let query = supabase
         .from("crm_deals")
@@ -318,12 +318,14 @@ export function useDeals(pipelineId?: string | null) {
         )
         .order("created_at", { ascending: false });
       if (pipelineId) query = query.eq("pipeline_id", pipelineId);
+      if (ownerId) query = query.eq("owner_user_id", ownerId);
       const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as unknown as CrmDeal[];
     },
   });
 }
+
 
 export function useSaveDeal() {
   const queryClient = useQueryClient();
