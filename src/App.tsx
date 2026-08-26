@@ -44,6 +44,7 @@ import GuestMeetingRoom from "./pages/GuestMeetingRoom";
 import CreationMaterials from "./pages/CreationMaterials";
 import CRM from "./pages/CRM";
 import CRMFeeder from "./pages/CRMFeeder";
+import Agendor from "./pages/Agendor";
 
 import Agendamentos from "./pages/Agendamentos";
 import AgendamentosCRM from "./pages/AgendamentosCRM";
@@ -111,6 +112,7 @@ const App = () => (
                   <Route path="/metas" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
                   <Route path="/crm-alimentador" element={<ProtectedRoute allowedRoles={['dev', 'sdr', 'admin', 'diretoria', 'gerente']}><CRMFeeder /></ProtectedRoute>} />
                   <Route path="/crm" element={<ProtectedRoute allowedRoles={['dev', 'vendedor', 'gerente', 'admin', 'diretoria']}><CRM /></ProtectedRoute>} />
+                  <Route path="/agendor" element={<ProtectedRoute><Agendor /></ProtectedRoute>} />
 
                   <Route path="/agendamentos" element={<ProtectedRoute allowedRoles={['dev', 'vendedor', 'gerente', 'admin', 'diretoria']}><Agendamentos /></ProtectedRoute>} />
                   <Route path="/agendamentos-crm" element={<ProtectedRoute allowedRoles={['dev', 'sdr', 'diretoria', 'gerente']}><AgendamentosCRM /></ProtectedRoute>} />
