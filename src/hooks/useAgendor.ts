@@ -404,9 +404,18 @@ export function useDeleteDeal() {
 
 /* ---------------------- Atividades ---------------------- */
 
-export function useActivities(filters?: { dealId?: string | null; onlyOpen?: boolean }) {
+export function useActivities(filters?: {
+  dealId?: string | null;
+  onlyOpen?: boolean;
+  ownerId?: string | null;
+}) {
   return useQuery({
-    queryKey: ["crm-activities", filters?.dealId ?? "all", filters?.onlyOpen ?? false],
+    queryKey: [
+      "crm-activities",
+      filters?.dealId ?? "all",
+      filters?.onlyOpen ?? false,
+      filters?.ownerId ?? "all",
+    ],
     queryFn: async () => {
       let query = supabase
         .from("crm_activities")
@@ -414,12 +423,14 @@ export function useActivities(filters?: { dealId?: string | null; onlyOpen?: boo
         .order("due_at", { ascending: true, nullsFirst: false });
       if (filters?.dealId) query = query.eq("deal_id", filters.dealId);
       if (filters?.onlyOpen) query = query.is("completed_at", null);
+      if (filters?.ownerId) query = query.eq("assigned_to", filters.ownerId);
       const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as CrmActivity[];
     },
   });
 }
+
 
 export function useSaveActivity() {
   const queryClient = useQueryClient();
