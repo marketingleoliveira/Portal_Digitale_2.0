@@ -366,7 +366,9 @@ export type Database = {
           description: string | null
           expected_close_date: string | null
           id: string
+          last_activity_at: string
           lead_id: string | null
+          loss_competitor: string | null
           loss_reason: string | null
           organization_id: string | null
           owner_user_id: string | null
@@ -379,6 +381,7 @@ export type Database = {
           title: string
           updated_at: string
           value: number
+          won_value: number | null
         }
         Insert: {
           closed_at?: string | null
@@ -387,7 +390,9 @@ export type Database = {
           description?: string | null
           expected_close_date?: string | null
           id?: string
+          last_activity_at?: string
           lead_id?: string | null
+          loss_competitor?: string | null
           loss_reason?: string | null
           organization_id?: string | null
           owner_user_id?: string | null
@@ -400,6 +405,7 @@ export type Database = {
           title: string
           updated_at?: string
           value?: number
+          won_value?: number | null
         }
         Update: {
           closed_at?: string | null
@@ -408,7 +414,9 @@ export type Database = {
           description?: string | null
           expected_close_date?: string | null
           id?: string
+          last_activity_at?: string
           lead_id?: string | null
+          loss_competitor?: string | null
           loss_reason?: string | null
           organization_id?: string | null
           owner_user_id?: string | null
@@ -421,6 +429,7 @@ export type Database = {
           title?: string
           updated_at?: string
           value?: number
+          won_value?: number | null
         }
         Relationships: [
           {
@@ -540,6 +549,39 @@ export type Database = {
           },
         ]
       }
+      crm_ownership_transfers: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          from_user_id: string | null
+          id: string
+          reason: string | null
+          to_user_id: string | null
+          transferred_by: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          from_user_id?: string | null
+          id?: string
+          reason?: string | null
+          to_user_id?: string | null
+          transferred_by: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          from_user_id?: string | null
+          id?: string
+          reason?: string | null
+          to_user_id?: string | null
+          transferred_by?: string
+        }
+        Relationships: []
+      }
       crm_people: {
         Row: {
           created_at: string
@@ -629,6 +671,30 @@ export type Database = {
           name?: string
           sort_order?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_settings: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
         }
         Relationships: []
       }
@@ -2519,6 +2585,14 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_recordings: { Args: never; Returns: undefined }
+      crm_can_view: {
+        Args: { _creator?: string; _owner: string; _user_id: string }
+        Returns: boolean
+      }
+      crm_can_view_deal: {
+        Args: { _deal_id: string; _user_id: string }
+        Returns: boolean
+      }
       generate_meeting_code: { Args: never; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
