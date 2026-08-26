@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.crm_log_deal_change() FROM PUBLIC, anon, authenticated;

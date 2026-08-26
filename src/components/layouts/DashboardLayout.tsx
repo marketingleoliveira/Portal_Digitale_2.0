@@ -98,6 +98,7 @@ const navItems: NavItem[] = [
       { label: "Registros", href: "/financeiro/registros", icon: MapPin, roles: ["dev", "financeiro"] },
     ],
   },
+  { label: "Agendor", href: "/agendor", icon: Briefcase, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"] },
   {
     label: "CRM",
     href: "/crm-alimentador",
