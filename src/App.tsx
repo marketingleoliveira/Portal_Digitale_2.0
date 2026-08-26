@@ -58,6 +58,7 @@ import Reembolsos from "./pages/Reembolsos";
 import FinanceiroReembolsos from "./pages/FinanceiroReembolsos";
 import FinanceiroPontos from "./pages/FinanceiroPontos";
 import FinanceiroRegistros from "./pages/FinanceiroRegistros";
+import ErpSettings from "./pages/ErpSettings";
 import SAC from "./pages/SAC";
 import SACDetails from "./pages/SACDetails";
 
@@ -129,6 +130,7 @@ const App = () => (
                   <Route path="/financeiro/reembolsos" element={<ProtectedRoute allowedRoles={['dev', 'financeiro', 'admin', 'diretoria', 'gerente']}><FinanceiroReembolsos /></ProtectedRoute>} />
                   <Route path="/financeiro/pontos" element={<ProtectedRoute allowedRoles={['dev', 'financeiro', 'admin', 'diretoria', 'gerente']}><FinanceiroPontos /></ProtectedRoute>} />
                    <Route path="/financeiro/registros" element={<ProtectedRoute allowedRoles={['dev', 'financeiro', 'admin', 'diretoria', 'gerente']}><FinanceiroRegistros /></ProtectedRoute>} />
+                  <Route path="/configuracoes" element={<ProtectedRoute allowedRoles={['dev']}><ErpSettings /></ProtectedRoute>} />
                   <Route path="/sac" element={<ProtectedRoute><SAC /></ProtectedRoute>} />
                   <Route path="/sac/:id" element={<ProtectedRoute><SACDetails /></ProtectedRoute>} />
                   <Route path="/reuniao/:code" element={<ProtectedRoute><MeetingErrorBoundary><MeetingRoom /></MeetingErrorBoundary></ProtectedRoute>} />
