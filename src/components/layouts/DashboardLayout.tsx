@@ -165,9 +165,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 </div>
               ) : (
                 filteredNavItems.map((item) => {
-                  const visibleChildren = (item.children || []).filter((c) =>
-                    effectiveRoleForNav ? c.roles.includes(effectiveRoleForNav) : c.roles.includes("vendedor"),
+                  const visibleChildren = (item.children || []).filter(
+                    (c) =>
+                      (effectiveRoleForNav
+                        ? c.roles.includes(effectiveRoleForNav)
+                        : c.roles.includes("vendedor")) && isVisible(c),
                   );
+
                   const hasChildren = visibleChildren.length > 0;
                   const childActive = visibleChildren.some(
                     (c) => location.pathname === c.href || location.pathname.startsWith(c.href + "/"),
