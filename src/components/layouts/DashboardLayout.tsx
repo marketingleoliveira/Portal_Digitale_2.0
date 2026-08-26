@@ -97,15 +97,24 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     useNotificationContext();
   const { hasNewUpdates, markAsViewed } = useNewUpdates();
   const { hasActiveMeetings } = useActiveMeetings();
+  const { isMenuHidden } = useErpSettings();
 
   // Show loading spinner only during initial load, not indefinitely
   const isUserDataLoading = loading;
 
   // Filter nav items - if role not available, show minimal nav
   const effectiveRoleForNav = isDevLevel(user?.role) ? 'dev' : user?.role;
-  const filteredNavItems = effectiveRoleForNav
-    ? navItems.filter((item) => item.roles.includes(effectiveRoleForNav))
-    : navItems.filter((item) => item.roles.includes("vendedor")); // Default to minimal access
+  const isVisible = (item: NavItem) => {
+    // Dev-only settings area is restricted to the actual "dev" role.
+    if (item.href === "/configuracoes") return user?.role === "dev";
+    return !isMenuHidden(item.href, user?.role);
+  };
+  const filteredNavItems = (
+    effectiveRoleForNav
+      ? navItems.filter((item) => item.roles.includes(effectiveRoleForNav))
+      : navItems.filter((item) => item.roles.includes("vendedor")) // Default to minimal access
+  ).filter(isVisible);
+
 
   const handleSignOut = async () => {
     await signOut();
