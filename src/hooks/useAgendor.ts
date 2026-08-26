@@ -112,6 +112,10 @@ export interface CrmDeal {
   expected_close_date: string | null;
   closed_at: string | null;
   sort_order: number;
+  last_activity_at?: string | null;
+  won_value?: number | null;
+  loss_competitor?: string | null;
+
   created_by: string;
   created_at: string;
   updated_at: string;
