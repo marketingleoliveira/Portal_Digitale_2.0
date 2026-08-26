@@ -69,86 +69,9 @@ import { Eye, EyeOff } from "lucide-react";
 import { AppRole, ROLE_LABELS, isDevLevel } from "@/types/auth";
 import { UsersRound } from "lucide-react";
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  roles: AppRole[];
-  highlight?: boolean;
-  showNewBadge?: boolean;
-  children?: NavItem[];
-}
+import { navItems, NavItem } from "@/config/navigation";
+import { useErpSettings } from "@/hooks/useErpSettings";
 
-const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"], showNewBadge: true },
-  { label: "Ponto", href: "/ponto", icon: Clock, roles: ["dev", "admin", "gerente", "vendedor"] },
-  { label: "Reunião", href: "/reunioes", icon: Video, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"] },
-  { label: "Reserva de Salas", href: "/reserva-salas", icon: DoorOpen, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"] },
-  { label: "Localizar", href: "/localizar", icon: MapPin, roles: ["dev"] },
-  { label: "Metas", href: "/metas", icon: Target, roles: ["dev", "admin", "gerente", "vendedor"] },
-  { label: "Reembolso", href: "/reembolsos", icon: Receipt, roles: ["dev", "admin", "vendedor"] },
-  {
-    label: "Financeiro",
-    href: "/financeiro/reembolsos",
-    icon: Wallet,
-    roles: ["dev", "financeiro"],
-    children: [
-      { label: "Reembolsos", href: "/financeiro/reembolsos", icon: Receipt, roles: ["dev", "financeiro"] },
-       { label: "Pontos", href: "/financeiro/pontos", icon: Clock, roles: ["dev", "financeiro"] },
-      { label: "Registros", href: "/financeiro/registros", icon: MapPin, roles: ["dev", "financeiro"] },
-    ],
-  },
-  { label: "Agendor", href: "/agendor", icon: Briefcase, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"] },
-  {
-    label: "CRM",
-    href: "/crm-alimentador",
-    icon: Briefcase,
-    roles: ["dev", "sdr"],
-    children: [
-      { label: "Agendamentos CRM", href: "/agendamentos-crm", icon: CalendarCheck, roles: ["dev", "sdr"] },
-    ],
-  },
-  {
-    label: "Atendimento EAD",
-    href: "/crm",
-    icon: Handshake,
-    roles: ["dev", "vendedor", "gerente", "admin"],
-    children: [
-      { label: "Agendamentos EAD", href: "/agendamentos", icon: CalendarCheck, roles: ["dev", "vendedor", "gerente", "admin"] },
-    ],
-  },
-  // { label: "SAC", href: "/sac", icon: Inbox, roles: ["dev", "admin", "gerente", "vendedor", "sdr", "marketing", "qualidade", "financeiro"] },
-  {
-    label: "Marketing",
-    href: "/marketing",
-    icon: Megaphone,
-    roles: ["dev", "marketing"],
-    children: [
-      { label: "Depoimentos", href: "/depoimentos", icon: FileVideo, roles: ["dev", "marketing"] },
-      { label: "Solicitações", href: "/solicitacoes", icon: ClipboardList, roles: ["dev", "marketing"] },
-    ],
-  },
-  { label: "Gravações", href: "/gravacoes", icon: Film, roles: ["dev", "marketing"] },
-  { label: "Categorias", href: "/categorias", icon: FolderOpen, roles: ["dev", "admin", "criacao"] },
-  { label: "Usuários", href: "/usuarios", icon: Users, roles: ["dev", "admin"] },
-  { label: "Inativos", href: "/inativos", icon: UserX, roles: ["dev", "admin"] },
-  { label: "Equipe", href: "/equipe", icon: UsersRound, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "financeiro"] },
-  { label: "Arquivos", href: "/arquivos", icon: Upload, roles: ["dev", "admin"] },
-  { label: "Relatórios", href: "/relatorios", icon: BarChart3, roles: ["dev", "admin", "gerente"] },
-  { label: "Tabelas de Preços", href: "/precos", icon: DollarSign, roles: ["dev", "admin", "gerente", "vendedor", "sdr"] },
-  { label: "Materiais Comerciais", href: "/downloads", icon: FileText, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing"] },
-  { label: "Material Criação", href: "/material-criacao", icon: Package, roles: ["dev", "criacao", "marketing"] },
-  { label: "Notificações", href: "/notificacoes", icon: Bell, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"] },
-  {
-    label: "Solicitar Ajuda",
-    href: "/tickets",
-    icon: TicketIcon,
-    roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"],
-    highlight: true,
-  },
-  { label: "FAQ", href: "/ajuda", icon: HelpCircle, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"] },
-  { label: "Atualizações", href: "/atualizacoes", icon: Rocket, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro"] },
-];
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
