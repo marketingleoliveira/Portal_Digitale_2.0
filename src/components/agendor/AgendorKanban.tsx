@@ -1,13 +1,28 @@
 import { useState, type DragEvent } from "react";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Building2, CalendarDays, GripVertical, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatBRL, useMoveDeal, type CrmDeal, type CrmStage } from "@/hooks/useAgendor";
+import { DealHealthDot } from "./DealHealthDot";
+import {
+  computeDealHealth,
+  formatBRL,
+  useCrmSettings,
+  useMoveDeal,
+  useSellers,
+  type CrmActivity,
+  type CrmDeal,
+  type CrmStage,
+} from "@/hooks/useAgendor";
 
 interface AgendorKanbanProps {
   deals: CrmDeal[];
   stages: CrmStage[];
   onSelectDeal: (deal: CrmDeal) => void;
+  /** Atividades usadas para calcular a saúde de cada negócio. */
+  activities?: CrmActivity[];
+  /** Exibe o responsável no cartão (visão de Gerência). */
+  showOwner?: boolean;
 }
 
 const STAGE_ACCENT: Record<string, string> = {
@@ -19,8 +34,16 @@ const STAGE_ACCENT: Record<string, string> = {
   rose: "border-t-destructive/70",
 };
 
-export function AgendorKanban({ deals, stages, onSelectDeal }: AgendorKanbanProps) {
+export function AgendorKanban({
+  deals,
+  stages,
+  onSelectDeal,
+  activities = [],
+  showOwner,
+}: AgendorKanbanProps) {
   const moveDeal = useMoveDeal();
+  const { data: settings } = useCrmSettings();
+  const { data: sellers = [] } = useSellers();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
@@ -73,50 +96,71 @@ export function AgendorKanban({ deals, stages, onSelectDeal }: AgendorKanbanProp
             </header>
 
             <div className="space-y-2">
-              {stageDeals.map((deal) => (
-                <Card
-                  key={deal.id}
-                  draggable
-                  onDragStart={(e) => {
-                    setDraggedId(deal.id);
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", deal.id);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedId(null);
-                    setDropTarget(null);
-                  }}
-                  onClick={() => onSelectDeal(deal)}
-                  className={cn(
-                    "p-3 cursor-pointer hover:border-primary/50 transition-colors space-y-2",
-                    draggedId === deal.id && "opacity-50"
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    <GripVertical className="w-3.5 h-3.5 mt-0.5 text-muted-foreground shrink-0" />
-                    <p className="text-sm font-medium leading-tight">{deal.title}</p>
-                  </div>
-                  <p className="text-sm font-semibold">{formatBRL(Number(deal.value ?? 0))}</p>
-                  {deal.organization?.name && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
-                      <Building2 className="w-3 h-3 shrink-0" />
-                      {deal.organization.name}
+              {stageDeals.map((deal) => {
+                const { health, nextTask, daysIdle } = computeDealHealth(
+                  deal,
+                  activities,
+                  settings?.health_rules
+                );
+                const owner = sellers.find((s) => s.id === deal.owner_user_id);
+                return (
+                  <Card
+                    key={deal.id}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedId(deal.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", deal.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedId(null);
+                      setDropTarget(null);
+                    }}
+                    onClick={() => onSelectDeal(deal)}
+                    className={cn(
+                      "p-3 cursor-pointer hover:border-primary/50 transition-colors space-y-2",
+                      draggedId === deal.id && "opacity-50"
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <GripVertical className="w-3.5 h-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                      <p className="text-sm font-medium leading-tight flex-1">{deal.title}</p>
+                      {deal.status === "aberto" && (
+                        <DealHealthDot health={health} daysIdle={daysIdle} className="mt-1" />
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold">{formatBRL(Number(deal.value ?? 0))}</p>
+                    {deal.organization?.name && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
+                        <Building2 className="w-3 h-3 shrink-0" />
+                        {deal.organization.name}
+                      </p>
+                    )}
+                    {deal.person?.name && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
+                        <User className="w-3 h-3 shrink-0" />
+                        {deal.person.name}
+                      </p>
+                    )}
+                    {deal.expected_close_date && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <CalendarDays className="w-3 h-3 shrink-0" />
+                        {new Date(`${deal.expected_close_date}T12:00:00`).toLocaleDateString("pt-BR")}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground truncate">
+                      {nextTask
+                        ? `Próximo passo: ${nextTask.title}`
+                        : "Sem próximo passo definido"}
                     </p>
-                  )}
-                  {deal.person?.name && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
-                      <User className="w-3 h-3 shrink-0" />
-                      {deal.person.name}
-                    </p>
-                  )}
-                  {deal.expected_close_date && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <CalendarDays className="w-3 h-3 shrink-0" />
-                      {new Date(`${deal.expected_close_date}T12:00:00`).toLocaleDateString("pt-BR")}
-                    </p>
-                  )}
-                </Card>
-              ))}
+                    {showOwner && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {owner?.full_name ?? "Sem responsável"}
+                      </Badge>
+                    )}
+                  </Card>
+                );
+              })}
               {stageDeals.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-6">Arraste negócios para cá</p>
               )}
