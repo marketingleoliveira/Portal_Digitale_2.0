@@ -469,6 +469,57 @@ export type Database = {
           },
         ]
       }
+      crm_meeting_schedules: {
+        Row: {
+          assigned_to: string | null
+          company_name: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          duration_minutes: number
+          id: string
+          notes: string | null
+          scheduled_date: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          company_name: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by: string
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          scheduled_date: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          company_name?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          scheduled_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_organizations: {
         Row: {
           category: string | null
