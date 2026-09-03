@@ -28,9 +28,17 @@ const CrmAtendimento = () => {
     statusFilter === "all" ? null : statusFilter,
     "atendimento",
   );
+  const { data: scheduledOwners = {}, isLoading: loadingScheduled } = useCrmScheduledLeadOwners();
 
   const visibleLeads = useMemo(() => {
-    const scoped = canSeeAll ? leads : leads.filter((l) => l.assigned_to === user?.id);
+    // Somente leads criados por agendamentos do calendário do CRM.
+    const fromSchedules = leads.filter((l) => l.id in scheduledOwners);
+    // Cada vendedor vê exclusivamente os agendamentos designados a ele.
+    const scoped = canSeeAll
+      ? fromSchedules
+      : fromSchedules.filter(
+          (l) => l.assigned_to === user?.id || scheduledOwners[l.id] === user?.id,
+        );
     if (!searchTerm) return scoped;
     const q = searchTerm.toLowerCase();
     return scoped.filter(
