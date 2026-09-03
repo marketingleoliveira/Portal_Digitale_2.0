@@ -79,6 +79,29 @@ export function useCrmMeetingSchedules() {
   });
 }
 
+/**
+ * Leads originados exclusivamente de agendamentos do calendário do CRM.
+ * Retorna o mapa lead_id -> vendedor designado, permitindo isolamento por vendedor.
+ */
+export function useCrmScheduledLeadOwners() {
+  return useQuery({
+    queryKey: ["crm-scheduled-lead-owners"],
+    queryFn: async (): Promise<Record<string, string | null>> => {
+      const { data, error } = await supabase
+        .from("crm_meeting_schedules")
+        .select("lead_id, assigned_to")
+        .not("lead_id", "is", null);
+      if (error) throw error;
+
+      const map: Record<string, string | null> = {};
+      for (const row of (data ?? []) as { lead_id: string | null; assigned_to: string | null }[]) {
+        if (row.lead_id) map[row.lead_id] = row.assigned_to;
+      }
+      return map;
+    },
+  });
+}
+
 export function useCreateCrmMeeting() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
