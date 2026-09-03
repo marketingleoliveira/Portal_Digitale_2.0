@@ -75,27 +75,106 @@ export function useCreateCrmMeeting() {
   return useMutation({
     mutationFn: async (input: CrmMeetingInput) => {
       if (!user) throw new Error("Sessão expirada. Faça login novamente.");
+
+      const title = input.title.trim();
+      const company = input.company_name.trim();
+      const sellerId = input.assigned_to || null;
+      const hostId = sellerId || user.id;
+
+      // 1. Create the online meeting room in the "Reunião" module, hosted by the seller.
+      let meetingId: string | null = null;
+      try {
+        const { data: meeting, error: meetingError } = await supabase
+          .from("meetings")
+          .insert({
+            title,
+            meeting_code: generateMeetingCode(),
+            host_user_id: hostId,
+            scheduled_start: input.scheduled_date,
+            scheduled_end: new Date(
+              new Date(input.scheduled_date).getTime() + (input.duration_minutes ?? 60) * 60000,
+            ).toISOString(),
+          })
+          .select("id")
+          .single();
+        if (meetingError) throw meetingError;
+        meetingId = meeting?.id ?? null;
+      } catch (err) {
+        console.error("Falha ao criar sala de reunião do agendamento CRM", err);
+      }
+
+      // 2. Create the lead in the Atendimento pipeline, assigned to the seller only.
+      let leadId: string | null = null;
+      try {
+        const { data: lead, error: leadError } = await supabase
+          .from("leads")
+          .insert({
+            company_name: company,
+            contact_name: input.contact_name?.trim() || company,
+            contact_email: input.contact_email?.trim() || null,
+            contact_phone: input.contact_phone?.trim() || null,
+            source: "outro",
+            status: "proposta",
+            scope: "atendimento",
+            notes: input.notes?.trim() || null,
+            assigned_to: sellerId,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+        if (leadError) throw leadError;
+        leadId = lead?.id ?? null;
+      } catch (err) {
+        console.error("Falha ao criar lead do agendamento CRM", err);
+      }
+
+      // 3. Persist the schedule with the links to the meeting and the lead.
       const { error } = await supabase.from("crm_meeting_schedules").insert({
         scheduled_date: input.scheduled_date,
         duration_minutes: input.duration_minutes ?? 60,
-        title: input.title.trim(),
-        company_name: input.company_name.trim(),
+        title,
+        company_name: company,
         contact_name: input.contact_name?.trim() || null,
         contact_phone: input.contact_phone?.trim() || null,
         contact_email: input.contact_email?.trim() || null,
         notes: input.notes?.trim() || null,
-        assigned_to: input.assigned_to || null,
+        assigned_to: sellerId,
         created_by: user.id,
+        meeting_id: meetingId,
+        lead_id: leadId,
       });
       if (error) throw error;
+
+      // 4. Notify the assigned seller.
+      if (sellerId && sellerId !== user.id) {
+        try {
+          const when = new Date(input.scheduled_date).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          await supabase.from("user_notifications").insert({
+            title: `Nova reunião agendada: ${title}`,
+            message: `Você foi designado para a reunião com ${company} em ${when}. O lead já está disponível no menu Atendimento.`,
+            target_user_id: sellerId,
+            created_by: user.id,
+          });
+        } catch (err) {
+          console.error("Falha ao notificar vendedor do agendamento CRM", err);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast.success("Agendamento criado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Agendamento criado! Reunião e lead gerados para o vendedor.");
     },
     onError: (err: Error) => toast.error("Erro ao agendar: " + err.message),
   });
 }
+
 
 export function useUpdateCrmMeeting() {
   const queryClient = useQueryClient();
