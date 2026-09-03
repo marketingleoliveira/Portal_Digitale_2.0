@@ -66,13 +66,15 @@ export const navItems: NavItem[] = [
   { label: "Agendor", href: "/agendor", icon: Briefcase, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro", "diretoria"] },
   {
     label: "CRM",
-    href: "/crm-alimentador",
+    href: "/crm-calendario",
     icon: Briefcase,
     roles: ["dev", "sdr", "diretoria", "gerente"],
     children: [
-      { label: "Agendamentos CRM", href: "/agendamentos-crm", icon: CalendarCheck, roles: ["dev", "sdr", "diretoria", "gerente"] },
+      { label: "Calendário", href: "/crm-calendario", icon: CalendarCheck, roles: ["dev", "sdr", "diretoria", "gerente"] },
+      { label: "Agendamentos", href: "/crm-agendamentos", icon: ClipboardList, roles: ["dev", "sdr", "diretoria", "gerente"] },
     ],
   },
+
   {
     label: "Atendimento EAD",
     href: "/crm",
