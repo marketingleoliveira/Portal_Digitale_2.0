@@ -112,7 +112,7 @@ const CrmAtendimento = () => {
           </Select>
         </div>
 
-        {isLoading || loadingScheduled ? (
+        {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
