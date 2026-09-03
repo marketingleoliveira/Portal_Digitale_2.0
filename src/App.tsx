@@ -50,6 +50,7 @@ import Agendamentos from "./pages/Agendamentos";
 import AgendamentosCRM from "./pages/AgendamentosCRM";
 import CrmCalendario from "./pages/CrmCalendario";
 import CrmAgendamentos from "./pages/CrmAgendamentos";
+import CrmAtendimento from "./pages/CrmAtendimento";
 
 
 import Marketing from "./pages/Marketing";
@@ -122,6 +123,7 @@ const App = () => (
                   <Route path="/agendamentos-crm" element={<ProtectedRoute allowedRoles={['dev', 'sdr', 'diretoria', 'gerente']}><AgendamentosCRM /></ProtectedRoute>} />
                   <Route path="/crm-calendario" element={<ProtectedRoute allowedRoles={['dev', 'sdr', 'diretoria', 'gerente']}><CrmCalendario /></ProtectedRoute>} />
                   <Route path="/crm-agendamentos" element={<ProtectedRoute allowedRoles={['dev', 'sdr', 'diretoria', 'gerente']}><CrmAgendamentos /></ProtectedRoute>} />
+            <Route path="/crm-atendimento" element={<ProtectedRoute allowedRoles={['dev', 'sdr', 'diretoria', 'gerente', 'vendedor', 'admin']}><CrmAtendimento /></ProtectedRoute>} />
 
 
                   <Route path="/precos" element={<ProtectedRoute><Prices /></ProtectedRoute>} />
