@@ -68,10 +68,11 @@ export const navItems: NavItem[] = [
     label: "CRM",
     href: "/crm-calendario",
     icon: Briefcase,
-    roles: ["dev", "sdr", "diretoria", "gerente"],
+    roles: ["dev", "sdr", "diretoria", "gerente", "vendedor"],
     children: [
       { label: "Calendário", href: "/crm-calendario", icon: CalendarCheck, roles: ["dev", "sdr", "diretoria", "gerente"] },
       { label: "Agendamentos", href: "/crm-agendamentos", icon: ClipboardList, roles: ["dev", "sdr", "diretoria", "gerente"] },
+      { label: "Atendimento", href: "/crm-atendimento", icon: Handshake, roles: ["dev", "sdr", "diretoria", "gerente", "vendedor"] },
     ],
   },
 
