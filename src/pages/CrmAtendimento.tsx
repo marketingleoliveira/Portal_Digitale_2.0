@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLeads, useLeadsRealtime, LEAD_STATUS_CONFIG, type Lead, type LeadStatus } from "@/hooks/useCRM";
+import { useCrmScheduledLeadOwners } from "@/hooks/useCrmMeetingSchedules";
 import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
 import { CRMTable } from "@/components/crm/CRMTable";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,17 @@ const CrmAtendimento = () => {
     statusFilter === "all" ? null : statusFilter,
     "atendimento",
   );
+  const { data: scheduledOwners = {}, isLoading: loadingScheduled } = useCrmScheduledLeadOwners();
 
   const visibleLeads = useMemo(() => {
-    const scoped = canSeeAll ? leads : leads.filter((l) => l.assigned_to === user?.id);
+    // Somente leads criados por agendamentos do calendário do CRM.
+    const fromSchedules = leads.filter((l) => l.id in scheduledOwners);
+    // Cada vendedor vê exclusivamente os agendamentos designados a ele.
+    const scoped = canSeeAll
+      ? fromSchedules
+      : fromSchedules.filter(
+          (l) => l.assigned_to === user?.id || scheduledOwners[l.id] === user?.id,
+        );
     if (!searchTerm) return scoped;
     const q = searchTerm.toLowerCase();
     return scoped.filter(
@@ -40,7 +49,7 @@ const CrmAtendimento = () => {
         l.contact_email?.toLowerCase().includes(q) ||
         l.contact_phone?.includes(q),
     );
-  }, [leads, canSeeAll, user?.id, searchTerm]);
+  }, [leads, canSeeAll, user?.id, searchTerm, scheduledOwners]);
 
   const openCount = visibleLeads.filter((l) => !["ganho", "perdido", "fora_de_perfil"].includes(l.status)).length;
 
@@ -105,14 +114,14 @@ const CrmAtendimento = () => {
           </Select>
         </div>
 
-        {isLoading ? (
+        {isLoading || loadingScheduled ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : visibleLeads.length === 0 ? (
           <Card>
             <CardContent className="p-10 text-center text-sm text-muted-foreground">
-              Nenhum lead designado até o momento.
+              Nenhum agendamento designado até o momento. Os leads aparecem aqui após uma reunião ser agendada no Calendário do CRM.
             </CardContent>
           </Card>
         ) : (
