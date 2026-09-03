@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { Lead } from "@/hooks/useCRM";
+
+export type CrmScheduledLead = Lead;
 
 export type CrmMeetingStatus = "agendado" | "realizado" | "cancelado";
 
@@ -98,6 +101,64 @@ export function useCrmScheduledLeadOwners() {
         if (row.lead_id) map[row.lead_id] = row.assigned_to;
       }
       return map;
+    },
+  });
+}
+
+/**
+ * Leads que existem exclusivamente porque um agendamento foi criado no
+ * Calendário do CRM. Nenhum outro lead do ERP (ex.: Atendimento EAD) entra aqui.
+ */
+export function useCrmScheduledLeads() {
+  return useQuery({
+    queryKey: ["crm-scheduled-leads"],
+    queryFn: async (): Promise<{ leads: CrmScheduledLead[]; owners: Record<string, string | null> }> => {
+      const { data: schedules, error } = await supabase
+        .from("crm_meeting_schedules")
+        .select("lead_id, assigned_to")
+        .not("lead_id", "is", null);
+      if (error) throw error;
+
+      const owners: Record<string, string | null> = {};
+      for (const row of (schedules ?? []) as { lead_id: string | null; assigned_to: string | null }[]) {
+        if (row.lead_id) owners[row.lead_id] = row.assigned_to;
+      }
+
+      const ids = Object.keys(owners);
+      if (ids.length === 0) return { leads: [], owners };
+
+      // Manual mapping: leads e profiles são consultados separadamente.
+      const { data: leads, error: leadsError } = await supabase
+        .from("leads")
+        .select("*")
+        .in("id", ids)
+        .order("created_at", { ascending: false });
+      if (leadsError) throw leadsError;
+
+      const rows = (leads ?? []) as unknown as CrmScheduledLead[];
+      const ownerIds = Array.from(
+        new Set(rows.map((l) => l.assigned_to).filter((id): id is string => !!id)),
+      );
+      if (ownerIds.length === 0) return { leads: rows, owners };
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", ownerIds);
+      const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+      return {
+        leads: rows.map((l) => ({
+          ...l,
+          assigned_profile: l.assigned_to
+            ? (() => {
+                const p = byId.get(l.assigned_to!);
+                return p ? { full_name: p.full_name, avatar_url: p.avatar_url } : null;
+              })()
+            : null,
+        })),
+        owners,
+      };
     },
   });
 }
