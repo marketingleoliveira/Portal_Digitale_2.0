@@ -480,6 +480,8 @@ export type Database = {
           created_by: string
           duration_minutes: number
           id: string
+          lead_id: string | null
+          meeting_id: string | null
           notes: string | null
           scheduled_date: string
           status: string
@@ -496,6 +498,8 @@ export type Database = {
           created_by: string
           duration_minutes?: number
           id?: string
+          lead_id?: string | null
+          meeting_id?: string | null
           notes?: string | null
           scheduled_date: string
           status?: string
@@ -512,13 +516,30 @@ export type Database = {
           created_by?: string
           duration_minutes?: number
           id?: string
+          lead_id?: string | null
+          meeting_id?: string | null
           notes?: string | null
           scheduled_date?: string
           status?: string
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "crm_meeting_schedules_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meeting_schedules_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_organizations: {
         Row: {
