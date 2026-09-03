@@ -25,21 +25,19 @@ const CrmAtendimento = () => {
   const [showDetail, setShowDetail] = useState(false);
 
   useLeadsRealtime();
-  const { data: leads = [], isLoading } = useLeads(
-    statusFilter === "all" ? null : statusFilter,
-    "atendimento",
-  );
-  const { data: scheduledOwners = {}, isLoading: loadingScheduled } = useCrmScheduledLeadOwners();
+  // Fonte única: apenas leads vinculados a agendamentos do Calendário do CRM.
+  const { data, isLoading } = useCrmScheduledLeads();
+  const scheduledLeads = data?.leads ?? [];
+  const scheduledOwners = data?.owners ?? {};
 
   const visibleLeads = useMemo(() => {
-    // Somente leads criados por agendamentos do calendário do CRM.
-    const fromSchedules = leads.filter((l) => l.id in scheduledOwners);
     // Cada vendedor vê exclusivamente os agendamentos designados a ele.
-    const scoped = canSeeAll
-      ? fromSchedules
-      : fromSchedules.filter(
+    let scoped = canSeeAll
+      ? scheduledLeads
+      : scheduledLeads.filter(
           (l) => l.assigned_to === user?.id || scheduledOwners[l.id] === user?.id,
         );
+    if (statusFilter !== "all") scoped = scoped.filter((l) => l.status === statusFilter);
     if (!searchTerm) return scoped;
     const q = searchTerm.toLowerCase();
     return scoped.filter(
@@ -49,7 +47,7 @@ const CrmAtendimento = () => {
         l.contact_email?.toLowerCase().includes(q) ||
         l.contact_phone?.includes(q),
     );
-  }, [leads, canSeeAll, user?.id, searchTerm, scheduledOwners]);
+  }, [scheduledLeads, scheduledOwners, canSeeAll, user?.id, searchTerm, statusFilter]);
 
   const openCount = visibleLeads.filter((l) => !["ganho", "perdido", "fora_de_perfil"].includes(l.status)).length;
 
