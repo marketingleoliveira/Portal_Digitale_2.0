@@ -20,6 +20,8 @@ export interface CrmMeetingSchedule {
   created_by: string;
   created_at: string;
   updated_at: string;
+  meeting_id?: string | null;
+  lead_id?: string | null;
   assigned_profile?: { id: string; full_name: string; avatar_url: string | null } | null;
 }
 
