@@ -164,7 +164,7 @@ export function DealDetailSheet({
                   size="sm"
                   variant="outline"
                   className="gap-2"
-                  onClick={() => reopenDeal.mutate(deal)}
+                  onClick={() => reopenDeal.mutate(deal.id)}
                 >
                   <RotateCcw className="w-4 h-4" />
                   Reabrir negócio
