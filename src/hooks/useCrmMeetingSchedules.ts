@@ -264,6 +264,7 @@ export function useCreateCrmMeeting() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ["crm-scheduled-lead-owners"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-scheduled-leads"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Agendamento criado! Reunião e lead gerados para o vendedor.");
     },

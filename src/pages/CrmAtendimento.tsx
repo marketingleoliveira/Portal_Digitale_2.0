@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLeads, useLeadsRealtime, LEAD_STATUS_CONFIG, type Lead, type LeadStatus } from "@/hooks/useCRM";
-import { useCrmScheduledLeadOwners } from "@/hooks/useCrmMeetingSchedules";
+import { useLeadsRealtime, LEAD_STATUS_CONFIG, type Lead, type LeadStatus } from "@/hooks/useCRM";
+import { useCrmScheduledLeads } from "@/hooks/useCrmMeetingSchedules";
 import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
 import { CRMTable } from "@/components/crm/CRMTable";
 import { Input } from "@/components/ui/input";
