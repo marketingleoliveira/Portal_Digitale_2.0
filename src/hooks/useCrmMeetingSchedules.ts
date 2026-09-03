@@ -37,6 +37,15 @@ export interface CrmMeetingInput {
 
 const QUERY_KEY = ["crm-meeting-schedules"] as const;
 
+/** Generates a Google-Meet style code (xxx-xxxx-xxx) for the auto-created meeting room. */
+function generateMeetingCode(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz";
+  const block = (n: number) =>
+    Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `${block(3)}-${block(4)}-${block(3)}`;
+}
+
+
 export function useCrmMeetingSchedules() {
   return useQuery({
     queryKey: QUERY_KEY,
