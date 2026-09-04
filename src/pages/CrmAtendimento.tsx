@@ -8,7 +8,7 @@ import { CRMTable } from "@/components/crm/CRMTable";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Loader2, Handshake, Users } from "lucide-react";
+import { Search, Loader2, Handshake, Users, UserCheck } from "lucide-react";
 import { isDevLevel } from "@/types/auth";
 
 /**
@@ -18,6 +18,7 @@ import { isDevLevel } from "@/types/auth";
 const CrmAtendimento = () => {
   const { user } = useAuth();
   const canSeeAll = isDevLevel(user?.role) || user?.role === "sdr" || user?.role === "admin";
+  const isSeller = user?.role === "vendedor";
 
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,12 +58,14 @@ const CrmAtendimento = () => {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Handshake className="w-6 h-6 text-primary" />
-            Atendimento
+            {isSeller ? "Meu Atendimento" : "Atendimento"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {canSeeAll
-              ? "Leads designados aos vendedores a partir dos agendamentos do CRM"
-              : "Leads designados a você a partir dos agendamentos do CRM"}
+            {isSeller
+              ? "Aqui aparecem apenas os leads designados a você pelos agendamentos do Calendário do CRM"
+              : canSeeAll
+                ? "Leads designados aos vendedores a partir dos agendamentos do CRM"
+                : "Leads designados a você a partir dos agendamentos do CRM"}
           </p>
         </div>
 
