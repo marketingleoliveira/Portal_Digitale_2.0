@@ -8,7 +8,7 @@ import { CRMTable } from "@/components/crm/CRMTable";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Loader2, Handshake, Users } from "lucide-react";
+import { Search, Loader2, Handshake, Users, UserCheck } from "lucide-react";
 import { isDevLevel } from "@/types/auth";
 
 /**
@@ -18,6 +18,7 @@ import { isDevLevel } from "@/types/auth";
 const CrmAtendimento = () => {
   const { user } = useAuth();
   const canSeeAll = isDevLevel(user?.role) || user?.role === "sdr" || user?.role === "admin";
+  const isSeller = user?.role === "vendedor";
 
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,12 +58,14 @@ const CrmAtendimento = () => {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Handshake className="w-6 h-6 text-primary" />
-            Atendimento
+            {isSeller ? "Meu Atendimento" : "Atendimento"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {canSeeAll
-              ? "Leads designados aos vendedores a partir dos agendamentos do CRM"
-              : "Leads designados a você a partir dos agendamentos do CRM"}
+            {isSeller
+              ? "Aqui aparecem apenas os leads designados a você pelos agendamentos do Calendário do CRM"
+              : canSeeAll
+                ? "Leads designados aos vendedores a partir dos agendamentos do CRM"
+                : "Leads designados a você a partir dos agendamentos do CRM"}
           </p>
         </div>
 
@@ -72,7 +75,9 @@ const CrmAtendimento = () => {
               <Users className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-2xl font-bold">{visibleLeads.length}</p>
-                <p className="text-xs text-muted-foreground">Leads no atendimento</p>
+                <p className="text-xs text-muted-foreground">
+                  {isSeller ? "Meus leads" : "Leads no atendimento"}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -81,7 +86,9 @@ const CrmAtendimento = () => {
               <Handshake className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-2xl font-bold">{openCount}</p>
-                <p className="text-xs text-muted-foreground">Em andamento</p>
+                <p className="text-xs text-muted-foreground">
+                  {isSeller ? "Meus atendimentos em andamento" : "Em andamento"}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -91,7 +98,7 @@ const CrmAtendimento = () => {
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar leads..."
+              placeholder={isSeller ? "Buscar nos meus leads..." : "Buscar leads..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -118,8 +125,13 @@ const CrmAtendimento = () => {
           </div>
         ) : visibleLeads.length === 0 ? (
           <Card>
-            <CardContent className="p-10 text-center text-sm text-muted-foreground">
-              Nenhum agendamento designado até o momento. Os leads aparecem aqui após uma reunião ser agendada no Calendário do CRM.
+            <CardContent className="p-10 text-center">
+              <UserCheck className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+              <p className="text-sm text-muted-foreground">
+                {isSeller
+                  ? "Você ainda não possui leads atribuídos. Assim que o gerente designar uma reunião a você no Calendário do CRM, seus leads aparecerão aqui."
+                  : "Nenhum agendamento designado até o momento. Os leads aparecem aqui após uma reunião ser agendada no Calendário do CRM."}
+              </p>
             </CardContent>
           </Card>
         ) : (
