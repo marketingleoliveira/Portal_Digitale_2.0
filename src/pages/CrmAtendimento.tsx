@@ -123,7 +123,7 @@ const CrmAtendimento = () => {
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
-        : visibleLeads.length === 0 ? (
+        ) : visibleLeads.length === 0 ? (
           <Card>
             <CardContent className="p-10 text-center">
               <UserCheck className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
