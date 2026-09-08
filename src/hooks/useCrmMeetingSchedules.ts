@@ -320,7 +320,29 @@ export function useUpdateCrmMeeting() {
   });
 }
 
+/** Atualiza o status do atendimento de um lead diretamente na página Atendimento. */
+export function useUpdateAttendanceStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ leadId, status }: { leadId: string; status: AttendanceStatus }) => {
+      const { error } = await supabase
+        .from("leads")
+        .update({ attendance_status: status })
+        .eq("id", leadId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["crm-scheduled-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success(`Status atualizado para "${ATTENDANCE_STATUS_CONFIG[vars.status].label}"`);
+    },
+    onError: (err: Error) => toast.error("Erro ao atualizar status: " + err.message),
+  });
+}
+
 export function useDeleteCrmMeeting() {
+
   const queryClient = useQueryClient();
 
   return useMutation({
