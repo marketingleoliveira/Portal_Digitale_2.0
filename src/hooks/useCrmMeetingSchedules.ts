@@ -239,6 +239,8 @@ export function useCreateCrmMeeting() {
             source: "outro",
             status: "proposta",
             scope: "atendimento",
+            attendance_status: "agendado",
+
             notes: input.notes?.trim() || null,
             assigned_to: sellerId,
             created_by: user.id,
