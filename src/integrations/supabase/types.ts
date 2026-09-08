@@ -1368,6 +1368,7 @@ export type Database = {
       leads: {
         Row: {
           assigned_to: string | null
+          attendance_status: string | null
           bairro: string | null
           categoria: string | null
           cep: string | null
@@ -1396,6 +1397,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          attendance_status?: string | null
           bairro?: string | null
           categoria?: string | null
           cep?: string | null
@@ -1424,6 +1426,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          attendance_status?: string | null
           bairro?: string | null
           categoria?: string | null
           cep?: string | null

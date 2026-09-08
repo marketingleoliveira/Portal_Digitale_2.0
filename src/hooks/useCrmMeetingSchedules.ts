@@ -4,9 +4,37 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Lead } from "@/hooks/useCRM";
 
-export type CrmScheduledLead = Lead;
+/** Status do atendimento, editável diretamente na página Atendimento. */
+export type AttendanceStatus =
+  | "agendado"
+  | "em_contato"
+  | "negociando"
+  | "finalizado"
+  | "cancelado";
+
+export const ATTENDANCE_STATUS_CONFIG: Record<
+  AttendanceStatus,
+  { label: string; className: string }
+> = {
+  agendado: { label: "Agendado", className: "bg-primary/10 text-primary border-primary/20" },
+  em_contato: { label: "Em contato", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+  negociando: { label: "Negociando", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  finalizado: { label: "Finalizado", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+  cancelado: { label: "Cancelado", className: "bg-destructive/10 text-destructive border-destructive/20" },
+};
+
+export const ATTENDANCE_STATUS_ORDER: AttendanceStatus[] = [
+  "agendado",
+  "em_contato",
+  "negociando",
+  "finalizado",
+  "cancelado",
+];
+
+export type CrmScheduledLead = Lead & { attendance_status?: AttendanceStatus | null };
 
 export type CrmMeetingStatus = "agendado" | "realizado" | "cancelado";
+
 
 export interface CrmMeetingSchedule {
   id: string;
@@ -211,6 +239,8 @@ export function useCreateCrmMeeting() {
             source: "outro",
             status: "proposta",
             scope: "atendimento",
+            attendance_status: "agendado",
+
             notes: input.notes?.trim() || null,
             assigned_to: sellerId,
             created_by: user.id,
@@ -241,7 +271,7 @@ export function useCreateCrmMeeting() {
       if (error) throw error;
 
       // 4. Notify the assigned seller.
-      if (sellerId && sellerId !== user.id) {
+      if (sellerId) {
         try {
           const when = new Date(input.scheduled_date).toLocaleString("pt-BR", {
             day: "2-digit",
@@ -292,7 +322,29 @@ export function useUpdateCrmMeeting() {
   });
 }
 
+/** Atualiza o status do atendimento de um lead diretamente na página Atendimento. */
+export function useUpdateAttendanceStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ leadId, status }: { leadId: string; status: AttendanceStatus }) => {
+      const { error } = await supabase
+        .from("leads")
+        .update({ attendance_status: status })
+        .eq("id", leadId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["crm-scheduled-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success(`Status atualizado para "${ATTENDANCE_STATUS_CONFIG[vars.status].label}"`);
+    },
+    onError: (err: Error) => toast.error("Erro ao atualizar status: " + err.message),
+  });
+}
+
 export function useDeleteCrmMeeting() {
+
   const queryClient = useQueryClient();
 
   return useMutation({

@@ -15,6 +15,13 @@
       "when": 1788437499912,
       "tag": "0001_crm_schedule_meeting_lead_links",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788867376652,
+      "tag": "0002_add_leads_attendance_status",
+      "breakpoints": true
     }
   ]
 }
