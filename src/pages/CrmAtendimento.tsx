@@ -1,15 +1,29 @@
 import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLeadsRealtime, LEAD_STATUS_CONFIG, type Lead, type LeadStatus } from "@/hooks/useCRM";
-import { useCrmScheduledLeads } from "@/hooks/useCrmMeetingSchedules";
+import { useLeadsRealtime, type Lead } from "@/hooks/useCRM";
+import {
+  useCrmScheduledLeads,
+  useUpdateAttendanceStatus,
+  ATTENDANCE_STATUS_CONFIG,
+  ATTENDANCE_STATUS_ORDER,
+  type AttendanceStatus,
+} from "@/hooks/useCrmMeetingSchedules";
 import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
-import { CRMTable } from "@/components/crm/CRMTable";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Loader2, Handshake, Users, UserCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Loader2, Handshake, Users, UserCheck, CheckCircle2 } from "lucide-react";
 import { isDevLevel } from "@/types/auth";
+import { cn } from "@/lib/utils";
 
 /**
  * Atendimento — leads gerados pelos agendamentos do CRM.
@@ -20,7 +34,7 @@ const CrmAtendimento = () => {
   const canSeeAll = isDevLevel(user?.role) || user?.role === "sdr" || user?.role === "admin";
   const isSeller = user?.role === "vendedor";
 
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -28,6 +42,7 @@ const CrmAtendimento = () => {
   useLeadsRealtime();
   // Fonte única: apenas leads vinculados a agendamentos do Calendário do CRM.
   const { data, isLoading } = useCrmScheduledLeads();
+  const updateStatus = useUpdateAttendanceStatus();
   const scheduledLeads = data?.leads ?? [];
   const scheduledOwners = data?.owners ?? {};
 
@@ -38,7 +53,9 @@ const CrmAtendimento = () => {
       : scheduledLeads.filter(
           (l) => l.assigned_to === user?.id || scheduledOwners[l.id] === user?.id,
         );
-    if (statusFilter !== "all") scoped = scoped.filter((l) => l.status === statusFilter);
+    if (statusFilter !== "all") {
+      scoped = scoped.filter((l) => (l.attendance_status ?? "agendado") === statusFilter);
+    }
     if (!searchTerm) return scoped;
     const q = searchTerm.toLowerCase();
     return scoped.filter(
@@ -50,7 +67,10 @@ const CrmAtendimento = () => {
     );
   }, [scheduledLeads, scheduledOwners, canSeeAll, user?.id, searchTerm, statusFilter]);
 
-  const openCount = visibleLeads.filter((l) => !["ganho", "perdido", "fora_de_perfil"].includes(l.status)).length;
+  const openCount = visibleLeads.filter(
+    (l) => !["finalizado", "cancelado"].includes(l.attendance_status ?? "agendado"),
+  ).length;
+  const doneCount = visibleLeads.filter((l) => l.attendance_status === "finalizado").length;
 
   return (
     <DashboardLayout>
@@ -69,7 +89,7 @@ const CrmAtendimento = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
               <Users className="w-5 h-5 text-primary" />
@@ -92,6 +112,15 @@ const CrmAtendimento = () => {
               </div>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-2xl font-bold">{doneCount}</p>
+                <p className="text-xs text-muted-foreground">Finalizados</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -104,15 +133,18 @@ const CrmAtendimento = () => {
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as LeadStatus | "all")}>
-            <SelectTrigger className="w-full sm:w-[200px]">
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as AttendanceStatus | "all")}
+          >
+            <SelectTrigger className="w-full sm:w-[220px]">
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
-              {Object.entries(LEAD_STATUS_CONFIG).map(([key, cfg]) => (
+              {ATTENDANCE_STATUS_ORDER.map((key) => (
                 <SelectItem key={key} value={key}>
-                  {cfg.label}
+                  {ATTENDANCE_STATUS_CONFIG[key].label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -135,13 +167,67 @@ const CrmAtendimento = () => {
             </CardContent>
           </Card>
         ) : (
-          <CRMTable
-            leads={visibleLeads}
-            onSelectLead={(lead) => {
-              setSelectedLead(lead);
-              setShowDetail(true);
-            }}
-          />
+          <div className="space-y-3">
+            {visibleLeads.map((lead) => {
+              const status = (lead.attendance_status ?? "agendado") as AttendanceStatus;
+              const cfg = ATTENDANCE_STATUS_CONFIG[status] ?? ATTENDANCE_STATUS_CONFIG.agendado;
+              return (
+                <Card key={lead.id}>
+                  <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold truncate">{lead.company_name}</p>
+                        <Badge variant="outline" className={cn("text-xs", cfg.className)}>
+                          {cfg.label}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {lead.contact_name}
+                        {lead.contact_phone ? ` · ${lead.contact_phone}` : ""}
+                        {lead.contact_email ? ` · ${lead.contact_email}` : ""}
+                      </p>
+                      {canSeeAll && lead.assigned_profile?.full_name && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Responsável: {lead.assigned_profile.full_name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Select
+                        value={status}
+                        onValueChange={(v) =>
+                          updateStatus.mutate({ leadId: lead.id, status: v as AttendanceStatus })
+                        }
+                        disabled={updateStatus.isPending}
+                      >
+                        <SelectTrigger className="w-full sm:w-[180px]" aria-label="Status do atendimento">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ATTENDANCE_STATUS_ORDER.map((key) => (
+                            <SelectItem key={key} value={key}>
+                              {ATTENDANCE_STATUS_CONFIG[key].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedLead(lead);
+                          setShowDetail(true);
+                        }}
+                      >
+                        Detalhes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
 
