@@ -269,7 +269,7 @@ export function useCreateCrmMeeting() {
       if (error) throw error;
 
       // 4. Notify the assigned seller.
-      if (sellerId && sellerId !== user.id) {
+      if (sellerId) {
         try {
           const when = new Date(input.scheduled_date).toLocaleString("pt-BR", {
             day: "2-digit",
