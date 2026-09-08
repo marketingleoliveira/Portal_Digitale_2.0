@@ -4,9 +4,37 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Lead } from "@/hooks/useCRM";
 
-export type CrmScheduledLead = Lead;
+/** Status do atendimento, editável diretamente na página Atendimento. */
+export type AttendanceStatus =
+  | "agendado"
+  | "em_contato"
+  | "negociando"
+  | "finalizado"
+  | "cancelado";
+
+export const ATTENDANCE_STATUS_CONFIG: Record<
+  AttendanceStatus,
+  { label: string; className: string }
+> = {
+  agendado: { label: "Agendado", className: "bg-primary/10 text-primary border-primary/20" },
+  em_contato: { label: "Em contato", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+  negociando: { label: "Negociando", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  finalizado: { label: "Finalizado", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+  cancelado: { label: "Cancelado", className: "bg-destructive/10 text-destructive border-destructive/20" },
+};
+
+export const ATTENDANCE_STATUS_ORDER: AttendanceStatus[] = [
+  "agendado",
+  "em_contato",
+  "negociando",
+  "finalizado",
+  "cancelado",
+];
+
+export type CrmScheduledLead = Lead & { attendance_status?: AttendanceStatus | null };
 
 export type CrmMeetingStatus = "agendado" | "realizado" | "cancelado";
+
 
 export interface CrmMeetingSchedule {
   id: string;
