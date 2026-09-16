@@ -469,6 +469,73 @@ export type Database = {
           },
         ]
       }
+      crm_external_lead_imports: {
+        Row: {
+          deal_id: string | null
+          external_lead_id: string
+          id: string
+          imported_at: string
+          organization_id: string | null
+          owner_user_id: string
+          payload: Json
+          person_id: string | null
+          qualification_score: number | null
+          qualification_status: string
+          source_system: string
+          updated_at: string
+        }
+        Insert: {
+          deal_id?: string | null
+          external_lead_id: string
+          id?: string
+          imported_at?: string
+          organization_id?: string | null
+          owner_user_id: string
+          payload?: Json
+          person_id?: string | null
+          qualification_score?: number | null
+          qualification_status: string
+          source_system: string
+          updated_at?: string
+        }
+        Update: {
+          deal_id?: string | null
+          external_lead_id?: string
+          id?: string
+          imported_at?: string
+          organization_id?: string | null
+          owner_user_id?: string
+          payload?: Json
+          person_id?: string | null
+          qualification_score?: number | null
+          qualification_status?: string
+          source_system?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_external_lead_imports_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "crm_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_external_lead_imports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "crm_organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_external_lead_imports_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "crm_people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_meeting_schedules: {
         Row: {
           assigned_to: string | null
