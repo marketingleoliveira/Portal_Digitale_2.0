@@ -29,6 +29,13 @@
       "when": 1789581996685,
       "tag": "0003_create_external_crm_lead_imports",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789582031771,
+      "tag": "0004_create_ingest_qualified_crm_lead_function",
+      "breakpoints": true
     }
   ]
 }

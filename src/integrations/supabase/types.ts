@@ -2749,6 +2749,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      ingest_qualified_crm_lead: { Args: { _payload: Json }; Returns: Json }
       is_meeting_host: {
         Args: { _meeting_id: string; _user_id: string }
         Returns: boolean
