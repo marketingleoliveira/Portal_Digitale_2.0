@@ -36,6 +36,13 @@
       "when": 1789582031771,
       "tag": "0004_create_ingest_qualified_crm_lead_function",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789582603830,
+      "tag": "0005_lock_external_crm_lead_imports_permissions",
+      "breakpoints": true
     }
   ]
 }
