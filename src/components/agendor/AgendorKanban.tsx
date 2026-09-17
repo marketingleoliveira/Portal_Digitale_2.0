@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, CalendarDays, GripVertical, User } from "lucide-react";
+import { Building2, FileDigit, GripVertical, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DealHealthDot } from "./DealHealthDot";
 import {
@@ -142,12 +142,10 @@ export function AgendorKanban({
                         {deal.person.name}
                       </p>
                     )}
-                    {deal.expected_close_date && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <CalendarDays className="w-3 h-3 shrink-0" />
-                        {new Date(`${deal.expected_close_date}T12:00:00`).toLocaleDateString("pt-BR")}
-                      </p>
-                    )}
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
+                      <FileDigit className="w-3 h-3 shrink-0" />
+                      CNPJ: {deal.organization?.cnpj?.trim() || "—"}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {nextTask
                         ? `Próximo passo: ${nextTask.title}`
