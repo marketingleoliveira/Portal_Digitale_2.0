@@ -119,7 +119,7 @@ export interface CrmDeal {
   created_by: string;
   created_at: string;
   updated_at: string;
-  organization?: { id: string; name: string } | null;
+  organization?: { id: string; name: string; cnpj: string | null } | null;
   person?: { id: string; name: string; phone: string | null } | null;
 }
 
@@ -318,7 +318,7 @@ export function useDeals(pipelineId?: string | null, ownerId?: string | null) {
       let query = supabase
         .from("crm_deals")
         .select(
-          "*, organization:crm_organizations(id, name), person:crm_people(id, name, phone)"
+          "*, organization:crm_organizations(id, name, cnpj), person:crm_people(id, name, phone)"
         )
         .order("created_at", { ascending: false });
       if (pipelineId) query = query.eq("pipeline_id", pipelineId);
