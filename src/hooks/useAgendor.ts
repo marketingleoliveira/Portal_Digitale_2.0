@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -96,6 +96,7 @@ export interface CrmPerson {
 }
 
 export interface CrmDeal {
+  customer?: {cnpj:string;name:string;last_order_date:string|null;average_ticket:number|null;status:string}|null;
   id: string;
   title: string;
   description: string | null;
@@ -119,8 +120,8 @@ export interface CrmDeal {
   created_by: string;
   created_at: string;
   updated_at: string;
-  organization?: { id: string; name: string; cnpj: string | null } | null;
-  person?: { id: string; name: string; phone: string | null } | null;
+  organization?: { id: string; name: string; cnpj: string | null; email?: string | null } | null;
+  person?: { id: string; name: string; phone: string | null; email?: string | null } | null;
 }
 
 export interface CrmActivity {
@@ -194,8 +195,11 @@ export function useStages(pipelineId?: string | null) {
 /* ---------------------- Organizações ---------------------- */
 
 export function useOrganizations() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["crm-organizations"],
+    queryKey: ["crm-organizations", user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 30000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("crm_organizations")
@@ -254,8 +258,11 @@ export function useDeleteOrganization() {
 /* ---------------------- Pessoas ---------------------- */
 
 export function usePeople(organizationId?: string | null) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["crm-people", organizationId ?? "all"],
+    queryKey: ["crm-people", organizationId ?? "all", user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 30000,
     queryFn: async () => {
       let query = supabase.from("crm_people").select("*").order("name");
       if (organizationId) query = query.eq("organization_id", organizationId);
@@ -312,15 +319,19 @@ export function useDeletePerson() {
 /* ---------------------- Negócios ---------------------- */
 
 export function useDeals(pipelineId?: string | null, ownerId?: string | null) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["crm-deals", pipelineId ?? "all", ownerId ?? "all"],
+    queryKey: ["crm-deals", pipelineId ?? "all", ownerId ?? "all", user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 30000,
     queryFn: async () => {
       let query = supabase
         .from("crm_deals")
         .select(
-          "*, organization:crm_organizations(id, name, cnpj), person:crm_people(id, name, phone)"
+          "*, organization:crm_organizations(id, name, cnpj, email), person:crm_people(id, name, phone, email)"
         )
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(1000);
       if (pipelineId) query = query.eq("pipeline_id", pipelineId);
       if (ownerId) query = query.eq("owner_user_id", ownerId);
       const { data, error } = await query;
@@ -339,12 +350,12 @@ export function useSaveDeal() {
     mutationFn: async (payload: Partial<CrmDeal> & { title: string }) => {
       if (!user?.id) throw new Error("Usuário não autenticado");
       if (payload.id) {
-        const { id, organization, person, ...rest } = payload;
+        const { id, organization, person, customer, ...rest } = payload;
         const { error } = await supabase.from("crm_deals").update(rest as never).eq("id", id);
         if (error) throw error;
         return;
       }
-      const { organization, person, ...rest } = payload;
+      const { organization, person, customer, ...rest } = payload;
       const { error } = await supabase.from("crm_deals").insert({
         ...rest,
         created_by: user.id,
@@ -554,7 +565,7 @@ export interface CrmModuleSettings {
 }
 
 const DEFAULT_SETTINGS: CrmModuleSettings = {
-  loss_reasons: ["Preço", "Concorrente", "Sem retorno", "Outro"],
+  loss_reasons: ["Fora de perfil", "Preço", "Concorrente", "Sem retorno", "Outro"],
   sources: ["Site", "Indicação", "WhatsApp", "Outro"],
   health_rules: { stale_days: 7, warning_days: 3 },
 };
@@ -567,7 +578,10 @@ export function useCrmSettings() {
       if (error) throw error;
       const map = new Map((data ?? []).map((row) => [row.key, row.value]));
       return {
-        loss_reasons: (map.get("loss_reasons") as string[]) ?? DEFAULT_SETTINGS.loss_reasons,
+        loss_reasons: Array.from(new Set([
+          "Fora de perfil",
+          ...((map.get("loss_reasons") as string[]) ?? DEFAULT_SETTINGS.loss_reasons)
+        ])),
         sources: (map.get("sources") as string[]) ?? DEFAULT_SETTINGS.sources,
         health_rules:
           (map.get("health_rules") as CrmModuleSettings["health_rules"]) ??
@@ -658,15 +672,44 @@ export function useCloseDeal() {
       note?: string | null;
       closedAt?: string | null;
     }) => {
+      if (
+        input.outcome === "perdido" &&
+        !String(input.lossReason ?? "").trim()
+      ) {
+        throw new Error("Selecione o motivo da perda.");
+      }
       if (!user?.id) throw new Error("Usuário não autenticado");
       const closedAt = input.closedAt ?? new Date().toISOString();
+
+      // AGENDOR_WON_TO_MEETINGS_DONE_V1
+      // Ganho sempre pertence a Reunioes Feitas do mesmo funil.
+      let resolvedStageId = input.stageId ?? input.deal.stage_id;
+
+      if (input.outcome === "ganho") {
+        const { data: wonStage, error: wonStageError } = await supabase
+          .from("crm_stages")
+          .select("id")
+          .eq("pipeline_id", input.deal.pipeline_id)
+          .eq("name", "Reuniões Feitas")
+          .maybeSingle();
+
+        if (wonStageError) throw wonStageError;
+
+        if (!wonStage?.id) {
+          throw new Error(
+            "Etapa Reuniões Feitas não encontrada neste funil."
+          );
+        }
+
+        resolvedStageId = wonStage.id;
+      }
 
       const { error } = await supabase
         .from("crm_deals")
         .update({
           status: input.outcome,
           closed_at: closedAt,
-          stage_id: input.stageId ?? input.deal.stage_id,
+          stage_id: resolvedStageId,
           value: input.outcome === "ganho" && input.finalValue != null ? input.finalValue : input.deal.value,
           won_value: input.outcome === "ganho" ? input.finalValue ?? input.deal.value : null,
           loss_reason: input.outcome === "perdido" ? input.lossReason ?? null : null,

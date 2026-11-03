@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-10-13T14:40:38Z",
+  "searxng_google": {
+    "endpoint": "https://www.google.com/wml/search",
+    "http_status": 403,
+    "result_count": 0,
+    "error": "SearxEngineAccessDeniedException"
+  },
+  "google_normal_http": {
+    "http_status": 200,
+    "requires_javascript": true
+  },
+  "google_normal_browser": {
+    "http_status": 200,
+    "redirect_path": "/sorry/index",
+    "captcha": true,
+    "results": 0,
+    "message": "Nossos sistemas detectaram tráfego incomum na sua rede de computadores."
+  },
+  "authorized_google_integration_configured": false,
+  "user_confirmed_no_authorized_integration": true,
+  "captcha_attempts_stopped": true,
+  "local_fixes": [
+    "removed categories=general so explicit engines are respected",
+    "varied searches by segment and region instead of endlessly repeating 20 identical queries"
+  ],
+  "remaining_dependency": "Desbloqueio legítimo pelo Google ou uma integração autorizada de resultados Google. O Portal não consegue remover esse bloqueio externo."
+}

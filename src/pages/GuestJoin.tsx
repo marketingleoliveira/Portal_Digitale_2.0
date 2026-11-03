@@ -1,228 +1,420 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Video, User, Lock, Loader2, ArrowRight } from "lucide-react";
-import { toast } from "sonner";
-import Logo from "@/components/Logo";
+import {
+  useEffect,
+  useState
+} from "react";
+
+import {
+  useNavigate,
+  useParams
+} from "react-router-dom";
+
+import {
+  ArrowRight,
+  Loader2,
+  Lock,
+  User,
+  Video
+} from "lucide-react";
+
+import {
+  Button
+} from "@/components/ui/button";
+
+import {
+  Input
+} from "@/components/ui/input";
+
+import {
+  Label
+} from "@/components/ui/label";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+
+import Logo
+  from "@/components/Logo";
 
 export default function GuestJoin() {
-  const { code } = useParams<{ code: string }>();
-  const navigate = useNavigate();
-  
-  const [guestName, setGuestName] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [needsPassword, setNeedsPassword] = useState<boolean | null>(null);
-  const [meetingTitle, setMeetingTitle] = useState("");
-  const [error, setError] = useState("");
-  const [checkingMeeting, setCheckingMeeting] = useState(true);
 
-  // Check if meeting exists and requires password
+  const {
+    code
+  } = useParams<{
+    code: string
+  }>();
+
+  const navigate =
+    useNavigate();
+
+  const [
+    name,
+    setName
+  ] = useState("");
+
+  const [
+    password,
+    setPassword
+  ] = useState("");
+
+  const [
+    title,
+    setTitle
+  ] = useState("");
+
+  const [
+    needsPassword,
+    setNeedsPassword
+  ] = useState(false);
+
+  const [
+    checking,
+    setChecking
+  ] = useState(true);
+
+  const [
+    joining,
+    setJoining
+  ] = useState(false);
+
+  const [
+    error,
+    setError
+  ] = useState("");
+
+
   useEffect(() => {
-    const checkMeeting = async () => {
-      if (!code) {
-        setError("Código de reunião inválido");
-        setCheckingMeeting(false);
+
+    const load =
+      async () => {
+
+        if (!code) {
+          setError(
+            "Código inválido"
+          );
+
+          setChecking(false);
+
+          return;
+        }
+
+        try {
+
+          const response =
+            await fetch(
+              `/api/meetings/public/${encodeURIComponent(
+                code
+              )}`
+            );
+
+          const result =
+            await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              result?.error?.message
+              ||
+              "Reunião não encontrada"
+            );
+          }
+
+          if (!result.is_active) {
+            throw new Error(
+              "Esta reunião já foi encerrada"
+            );
+          }
+
+          setTitle(
+            result.title
+          );
+
+          setNeedsPassword(
+            !!result.has_password
+          );
+
+        } catch (err: any) {
+
+          setError(
+            err?.message
+            ||
+            "Erro ao carregar reunião"
+          );
+
+        } finally {
+
+          setChecking(false);
+        }
+      };
+
+    load();
+
+  }, [code]);
+
+
+  const join =
+    async () => {
+
+      if (
+        !code ||
+        !name.trim()
+      ) {
         return;
       }
 
+      setJoining(true);
+      setError("");
+
       try {
-        const { data, error } = await supabase
-          .from("meetings")
-          .select("title, password, is_active")
-          .eq("meeting_code", code)
-          .single();
 
-        if (error || !data) {
-          setError("Reunião não encontrada");
-          setCheckingMeeting(false);
-          return;
+        const response =
+          await fetch(
+            `/api/meetings/public/${encodeURIComponent(
+              code
+            )}/join`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify({
+                  name:
+                    name.trim(),
+
+                  password
+                })
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error?.message
+            ||
+            "Não foi possível entrar"
+          );
         }
 
-        if (!data.is_active) {
-          setError("Esta reunião já foi encerrada");
-          setCheckingMeeting(false);
-          return;
-        }
+        sessionStorage.setItem(
+          `digitale_meeting_${code}`,
 
-        setMeetingTitle(data.title);
-        setNeedsPassword(!!data.password);
-        setCheckingMeeting(false);
-      } catch (err) {
-        console.error("Error checking meeting:", err);
-        setError("Erro ao verificar reunião");
-        setCheckingMeeting(false);
+          JSON.stringify({
+            name:
+              name.trim(),
+
+            meetingId:
+              result.meetingId,
+
+            meetingCode:
+              result.meetingCode,
+
+            title:
+              result.title,
+
+            token:
+              result.token,
+
+            serverUrl:
+              result.serverUrl
+          })
+        );
+
+        navigate(
+          `/convidado/${code}`
+        );
+
+      } catch (err: any) {
+
+        setError(
+          err?.message
+          ||
+          "Erro ao entrar na reunião"
+        );
+
+      } finally {
+
+        setJoining(false);
       }
     };
 
-    checkMeeting();
-  }, [code]);
 
-  const handleJoin = async () => {
-    if (!guestName.trim()) {
-      toast.error("Por favor, insira seu nome");
-      return;
-    }
-
-    if (!code) return;
-
-    setLoading(true);
-    setError("");
-
-    try {
-      // Verify meeting and password if needed
-      const { data: meeting, error: meetingError } = await supabase
-        .from("meetings")
-        .select("id, password, is_active")
-        .eq("meeting_code", code)
-        .single();
-
-      if (meetingError || !meeting) {
-        setError("Reunião não encontrada");
-        setLoading(false);
-        return;
-      }
-
-      if (!meeting.is_active) {
-        setError("Esta reunião já foi encerrada");
-        setLoading(false);
-        return;
-      }
-
-      if (meeting.password && password !== meeting.password) {
-        setError("Senha incorreta");
-        setLoading(false);
-        return;
-      }
-
-      // Generate a guest ID
-      const guestId = crypto.randomUUID();
-
-      // Store guest info in sessionStorage for the meeting room
-      sessionStorage.setItem(`guest_${code}`, JSON.stringify({
-        guestId,
-        guestName: guestName.trim(),
-        meetingId: meeting.id
-      }));
-
-      // Navigate to guest meeting room
-      navigate(`/convidado/${code}`);
-
-    } catch (err) {
-      console.error("Error joining meeting:", err);
-      setError("Erro ao entrar na reunião");
-      setLoading(false);
-    }
-  };
-
-  if (checkingMeeting) {
+  if (checking) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Verificando reunião...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+
       </div>
     );
   }
 
-  if (error && !needsPassword) {
+
+  if (
+    error &&
+    !title
+  ) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
+
         <Card className="w-full max-w-md">
+
           <CardHeader className="text-center">
-            <Logo size="lg" className="mx-auto mb-4" />
-            <CardTitle className="text-destructive">Erro</CardTitle>
-            <CardDescription>{error}</CardDescription>
+
+            <Logo
+              size="lg"
+              className="mx-auto mb-4"
+            />
+
+            <CardTitle>
+              Digitale Meet
+            </CardTitle>
+
+            <CardDescription className="text-destructive">
+              {error}
+            </CardDescription>
+
           </CardHeader>
-          <CardContent>
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => navigate("/")}
-            >
-              Voltar ao início
-            </Button>
-          </CardContent>
+
         </Card>
       </div>
     );
   }
 
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
+
       <Card className="w-full max-w-md">
+
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
-            <Video className="h-8 w-8 text-primary" />
+
+          <div className="mx-auto mb-3 w-fit p-3 rounded-full bg-primary/10">
+
+            <Video className="w-8 h-8 text-primary" />
+
           </div>
-          <CardTitle className="text-2xl">Entrar na Reunião</CardTitle>
+
+          <CardTitle>
+            Digitale Meet
+          </CardTitle>
+
           <CardDescription>
-            {meetingTitle || `Código: ${code}`}
+            {title}
           </CardDescription>
+
         </CardHeader>
+
         <CardContent className="space-y-4">
+
           <div className="space-y-2">
-            <Label htmlFor="guestName" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+
+            <Label className="flex items-center gap-2">
+
+              <User className="w-4 h-4" />
+
               Seu nome
+
             </Label>
+
             <Input
-              id="guestName"
-              placeholder="Digite seu nome"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleJoin()}
               autoFocus
+              value={name}
+
+              onChange={
+                e =>
+                  setName(
+                    e.target.value
+                  )
+              }
             />
+
           </div>
 
           {needsPassword && (
             <div className="space-y-2">
-              <Label htmlFor="password" className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
+
+              <Label className="flex items-center gap-2">
+
+                <Lock className="w-4 h-4" />
+
                 Senha da reunião
+
               </Label>
+
               <Input
-                id="password"
                 type="password"
-                placeholder="Digite a senha"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+
+                onChange={
+                  e =>
+                    setPassword(
+                      e.target.value
+                    )
+                }
+
+                onKeyDown={
+                  e =>
+                    e.key === "Enter"
+                    &&
+                    join()
+                }
               />
+
             </div>
           )}
 
           {error && (
-            <p className="text-sm text-destructive text-center">{error}</p>
+            <p className="text-sm text-destructive text-center">
+              {error}
+            </p>
           )}
 
-          <Button 
-            className="w-full" 
-            onClick={handleJoin}
-            disabled={loading || !guestName.trim()}
+          <Button
+            className="w-full"
+            disabled={
+              joining
+              ||
+              !name.trim()
+            }
+
+            onClick={
+              join
+            }
           >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Entrando...
-              </>
-            ) : (
-              <>
-                Entrar na Reunião
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </>
-            )}
+
+            {joining
+              ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              )
+              : (
+                <ArrowRight className="w-4 h-4 mr-2" />
+              )}
+
+            Entrar na reunião
+
           </Button>
 
-          <div className="text-center text-sm text-muted-foreground pt-2">
-            <p>Você entrará como convidado</p>
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
+            <p className="text-xs font-medium text-red-700">
+              Esta reunião é gravada automaticamente.
+            </p>
+            <p className="text-[11px] text-red-600 mt-1">
+              Ao entrar na reunião, você estará participando de uma chamada gravada pela Digitale.
+            </p>
           </div>
+
+          <p className="text-xs text-center text-muted-foreground">
+            Nenhuma conta externa é necessária.
+          </p>
+
         </CardContent>
       </Card>
     </div>

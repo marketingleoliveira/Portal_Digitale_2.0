@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { supabase } from '@/integrations/supabase/client';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { supabase } from '@/integrations/local/client';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { OPEN_STREET_MAP_STYLE } from '@/lib/openMap';
 
 interface LocationHistoryEntry {
   id: string;
@@ -22,7 +23,7 @@ interface LocationHistoryMapProps {
 
 const LocationHistoryMap: React.FC<LocationHistoryMapProps> = ({ userId, userName }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
+  const map = useRef<maplibregl.Map | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<LocationHistoryEntry[]>([]);
@@ -58,16 +59,6 @@ const LocationHistoryMap: React.FC<LocationHistoryMapProps> = ({ userId, userNam
 
     const initMap = async () => {
       try {
-        const { data, error: fetchError } = await supabase.functions.invoke('get-mapbox-token');
-        
-        if (fetchError || !data?.token) {
-          setError('Não foi possível carregar o mapa');
-          setLoading(false);
-          return;
-        }
-
-        mapboxgl.accessToken = data.token;
-
         // Filter valid locations
         const validLocations = history.filter(
           loc => loc.latitude != null && loc.longitude != null
@@ -87,14 +78,14 @@ const LocationHistoryMap: React.FC<LocationHistoryMapProps> = ({ userId, userNam
           (Math.min(...lats) + Math.max(...lats)) / 2,
         ];
 
-        map.current = new mapboxgl.Map({
+        map.current = new maplibregl.Map({
           container: mapContainer.current!,
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: OPEN_STREET_MAP_STYLE as any,
           center,
           zoom: 10,
         });
 
-        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
 
         map.current.on('load', () => {
           if (!map.current) return;
@@ -170,7 +161,7 @@ const LocationHistoryMap: React.FC<LocationHistoryMapProps> = ({ userId, userNam
               </div>
             `;
 
-            const popup = new mapboxgl.Popup({ offset: 15 }).setHTML(`
+            const popup = new maplibregl.Popup({ offset: 15 }).setHTML(`
               <div style="padding: 8px; min-width: 150px;">
                 <strong style="font-size: 12px; color: ${isFirst ? '#22c55e' : isLast ? '#ef4444' : '#667eea'}">
                   ${isFirst ? '📍 Início' : isLast ? '🏁 Último registro' : `Ponto ${index + 1}`}
@@ -184,7 +175,7 @@ const LocationHistoryMap: React.FC<LocationHistoryMapProps> = ({ userId, userNam
               </div>
             `);
 
-            new mapboxgl.Marker(el)
+            new maplibregl.Marker(el)
               .setLngLat([loc.longitude!, loc.latitude!])
               .setPopup(popup)
               .addTo(map.current!);
@@ -192,7 +183,7 @@ const LocationHistoryMap: React.FC<LocationHistoryMapProps> = ({ userId, userNam
 
           // Fit bounds
           if (validLocations.length > 1) {
-            const bounds = new mapboxgl.LngLatBounds();
+            const bounds = new maplibregl.LngLatBounds();
             validLocations.forEach(loc => {
               bounds.extend([loc.longitude!, loc.latitude!]);
             });

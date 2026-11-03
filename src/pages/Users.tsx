@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { UserProfile, UserRole, AppRole, ROLE_LABELS, hasFullAccess, REGIONS } from '@/types/auth';
 import RoleBadge from '@/components/RoleBadge';
 import { useToast } from '@/hooks/use-toast';
@@ -81,8 +81,6 @@ const Users: React.FC = () => {
   const [editRegion, setEditRegion] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [showDefaultPassword, setShowDefaultPassword] = useState(false);
-  const DEFAULT_SYSTEM_PASSWORD = 'Digitale@2026';
 
   const [newUser, setNewUser] = useState({
     full_name: '',
@@ -136,13 +134,13 @@ const Users: React.FC = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
     let password = '';
     for (let i = 0; i < 10; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+      password += chars.charAt(crypto.getRandomValues(new Uint32Array(1))[0] % chars.length);
     }
     return password;
   };
 
   const handleResetPassword = async (userEmail: string, userName: string) => {
-    const DEFAULT_RESET_PASSWORD = DEFAULT_SYSTEM_PASSWORD;
+    const DEFAULT_RESET_PASSWORD = generatePassword();
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
         body: { email: userEmail, password: DEFAULT_RESET_PASSWORD }
@@ -504,52 +502,6 @@ const Users: React.FC = () => {
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* Default System Password */}
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <KeyRound className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Senha padrão do sistema</p>
-                  <p className="text-xs text-muted-foreground">
-                    Usada em novos cadastros e ao redefinir senhas.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="px-3 py-1.5 rounded-md bg-background border font-mono text-sm min-w-[110px] text-center">
-                  {showDefaultPassword ? DEFAULT_SYSTEM_PASSWORD : '••••••••'}
-                </code>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowDefaultPassword((v) => !v)}
-                  title={showDefaultPassword ? 'Ocultar' : 'Mostrar'}
-                >
-                  {showDefaultPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    navigator.clipboard.writeText(DEFAULT_SYSTEM_PASSWORD);
-                    toast({ title: 'Senha copiada', description: 'A senha padrão foi copiada para a área de transferência.' });
-                  }}
-                  title="Copiar"
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
 
         {/* Search */}
         <Card>

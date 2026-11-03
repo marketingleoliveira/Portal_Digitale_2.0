@@ -1,3 +1,5 @@
+import PortalBackupStatusCorner from "@/components/PortalBackupStatusCorner";
+import { ReturnsDashboardWidget } from "@/components/agendor/ReturnsDashboardWidget";
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -5,7 +7,7 @@ import { hasFullAccess, isDevLevel } from '@/types/auth';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -226,6 +228,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <DashboardLayout>
+      <PortalBackupStatusCorner />
       <div className="space-y-6 animate-fade-in">
         {/* Welcome Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -430,6 +433,11 @@ const Dashboard: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* AGENDOR - RETORNOS */}
+        {["sdr", "dev", "gerente", "diretoria"].includes(
+          String(user?.role || "").toLowerCase()
+        ) && <ReturnsDashboardWidget />}
 
         {/* Activity Ranking & Links */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

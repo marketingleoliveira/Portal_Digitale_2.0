@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import { AppRole } from "@/types/auth";
 
 export const MENU_VISIBILITY_KEY = "menu_visibility";

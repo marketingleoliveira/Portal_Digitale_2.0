@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users } from 'lucide-react';
 import { useOnlineUsers } from '@/hooks/useOnlineUsers';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Drawer,

@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-13T20:27:49.153Z",
+  "filename": "relatorio_empresa.xls",
+  "format": "HTML Windows-1252 with XLS extension",
+  "automatic_mapping": {
+    "name": "Nome Fantasia",
+    "cnpj": "CNPJ/CPF",
+    "last_order_date": "Última Compra"
+  },
+  "source_rows": 3425,
+  "cpf_excluded": 769,
+  "empty_documents": 31,
+  "invalid_cnpj": 1,
+  "repeated_rows": 3,
+  "ready_unique_cnpjs": 2621,
+  "statuses": {
+    "active": 190,
+    "inactive": 1262,
+    "unknown": 1169
+  },
+  "previews": 2,
+  "client_database_unchanged": true,
+  "page_errors": []
+}

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Lead } from "@/hooks/useCRM";
@@ -101,7 +101,16 @@ export function useCrmMeetingSchedules() {
         .select("id, full_name, avatar_url")
         .in("id", ownerIds);
 
-      const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+      const typedProfiles =
+        (profiles ?? []) as {
+          id: string;
+          full_name: string;
+          avatar_url: string | null;
+        }[];
+
+      const byId = new Map(
+        typedProfiles.map((profile) => [profile.id, profile])
+      );
       return rows.map((r) => ({
         ...r,
         assigned_profile: r.assigned_to ? byId.get(r.assigned_to) ?? null : null,
@@ -173,7 +182,16 @@ export function useCrmScheduledLeads() {
         .from("profiles")
         .select("id, full_name, avatar_url")
         .in("id", ownerIds);
-      const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+      const typedProfiles =
+        (profiles ?? []) as {
+          id: string;
+          full_name: string;
+          avatar_url: string | null;
+        }[];
+
+      const byId = new Map(
+        typedProfiles.map((profile) => [profile.id, profile])
+      );
 
       return {
         leads: rows.map((l) => ({

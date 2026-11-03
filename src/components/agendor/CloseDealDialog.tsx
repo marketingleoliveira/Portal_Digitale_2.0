@@ -36,7 +36,9 @@ export function CloseDealDialog({ deal, stages, outcome, open, onOpenChange }: C
 
   if (!deal) return null;
   const isWin = outcome === "ganho";
-  const targetStage = stages.find((s) => (isWin ? s.is_won : s.is_lost));
+  const targetStage = isWin
+    ? stages.find((s) => s.name === "Reuniões Feitas")
+    : stages.find((s) => s.name === "Perdidos" || s.is_lost);
   const invalid = !isWin && !reason;
 
   const handleConfirm = async () => {
@@ -64,15 +66,7 @@ export function CloseDealDialog({ deal, stages, outcome, open, onOpenChange }: C
         <div className="space-y-4">
           {isWin ? (
             <>
-              <div className="space-y-1.5">
-                <Label htmlFor="final-value">Valor final fechado (R$)</Label>
-                <Input
-                  id="final-value"
-                  inputMode="decimal"
-                  value={finalValue}
-                  onChange={(e) => setFinalValue(e.target.value)}
-                />
-              </div>
+              
               <div className="space-y-1.5">
                 <Label htmlFor="closed-at">Data do fechamento</Label>
                 <Input

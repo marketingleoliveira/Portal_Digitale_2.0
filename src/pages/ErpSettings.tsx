@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
+import {useAuth} from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ const flattenNav = (items: NavItem[]): { item: NavItem; parentLabel?: string }[]
   ]);
 
 const ErpSettings: React.FC = () => {
+  const {user}=useAuth();
   const { hiddenMenus, loading, saveHiddenMenus } = useErpSettings();
   const [draft, setDraft] = useState<MenuVisibility>({});
   const [saving, setSaving] = useState(false);
@@ -57,7 +59,7 @@ const ErpSettings: React.FC = () => {
     setDraft(hiddenMenus);
   }, [hiddenMenus]);
 
-  const flatNav = useMemo(() => flattenNav(navItems), []);
+  const flatNav = useMemo(() => flattenNav(navItems).filter(({item})=>!item.allowedEmails || item.allowedEmails.includes(user?.email?.trim().toLowerCase() || "")), [user?.email]);
 
   const dirty = useMemo(
     () => JSON.stringify(draft) !== JSON.stringify(hiddenMenus),

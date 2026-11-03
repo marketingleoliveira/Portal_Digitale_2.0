@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-13T20:29:13.486Z",
+  "badge": "Cliente",
+  "mustard_background": "rgb(148, 107, 0)",
+  "white_text": "rgb(255, 255, 255)",
+  "button_opens_details": true,
+  "last_purchase_displayed": true,
+  "average_ticket_displayed": true,
+  "live_api_customer_metadata": true,
+  "browser_fixture_only": true,
+  "page_errors": [],
+  "tests_passed": 30
+}

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

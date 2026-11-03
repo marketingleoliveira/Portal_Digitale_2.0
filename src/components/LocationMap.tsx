@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { supabase } from '@/integrations/supabase/client';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { Loader2 } from 'lucide-react';
+import { OPEN_STREET_MAP_STYLE } from '@/lib/openMap';
 
 interface UserLocation {
   user_id: string;
@@ -24,8 +24,8 @@ interface LocationMapProps {
 
 const LocationMap: React.FC<LocationMapProps> = ({ locations, isUserOnline }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const map = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,17 +34,6 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, isUserOnline }) =>
       if (!mapContainer.current) return;
 
       try {
-        // Fetch Mapbox token from edge function
-        const { data, error: fetchError } = await supabase.functions.invoke('get-mapbox-token');
-        
-        if (fetchError || !data?.token) {
-          setError('Não foi possível carregar o mapa');
-          setLoading(false);
-          return;
-        }
-
-        mapboxgl.accessToken = data.token;
-
         // Filter locations with valid coordinates
         const validLocations = locations.filter(
           loc => loc.latitude != null && loc.longitude != null
@@ -67,15 +56,15 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, isUserOnline }) =>
           }
         }
 
-        map.current = new mapboxgl.Map({
+        map.current = new maplibregl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: OPEN_STREET_MAP_STYLE as any,
           center,
           zoom,
         });
 
         map.current.addControl(
-          new mapboxgl.NavigationControl({
+          new maplibregl.NavigationControl({
             visualizePitch: true,
           }),
           'top-right'
@@ -160,7 +149,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, isUserOnline }) =>
       });
 
       // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+      const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
         <div style="padding: 8px; min-width: 150px;">
           <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
             <strong style="font-size: 14px;">${location.profile?.full_name || 'Desconhecido'}</strong>
@@ -178,7 +167,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, isUserOnline }) =>
         </div>
       `);
 
-      const marker = new mapboxgl.Marker(el)
+      const marker = new maplibregl.Marker(el)
         .setLngLat([location.longitude, location.latitude])
         .setPopup(popup)
         .addTo(map.current!);
@@ -188,7 +177,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, isUserOnline }) =>
 
     // Fit bounds if multiple locations
     if (validLocations.length > 1) {
-      const bounds = new mapboxgl.LngLatBounds();
+      const bounds = new maplibregl.LngLatBounds();
       validLocations.forEach(loc => {
         if (loc.latitude != null && loc.longitude != null) {
           bounds.extend([loc.longitude, loc.latitude]);

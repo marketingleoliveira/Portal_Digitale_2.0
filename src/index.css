@@ -296,3 +296,36 @@
 .animate-float-up {
   animation: float-up 3s ease-out forwards;
 }
+
+
+/* ALERTA VISUAL - RETORNOS AGENDOR */
+@keyframes agendor-retornos-piscar {
+  0%, 100% {
+    background-color: #dc2626;
+    color: #ffffff;
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
+  }
+  50% {
+    background-color: #7f1d1d;
+    color: #ffffff;
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.12);
+  }
+}
+
+.agendor-retornos-alerta {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  animation: agendor-retornos-piscar 1.2s ease-in-out infinite;
+}
+
+.agendor-retornos-alerta:hover {
+  background-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agendor-retornos-alerta {
+    animation: none !important;
+  }
+}

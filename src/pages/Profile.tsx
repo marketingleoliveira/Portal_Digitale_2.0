@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import RoleBadge from '@/components/RoleBadge';
 import ProfileCertificates from '@/components/ProfileCertificates';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { User, Lock, Mail, Loader2, Pencil, Check, X, Camera, MessageCircle, Linkedin } from 'lucide-react';
 import { z } from 'zod';
 

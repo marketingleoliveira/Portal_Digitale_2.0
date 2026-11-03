@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTestimonials, TestimonialSchedule } from '@/hooks/useTestimonials';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { format, isSameDay, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameMonth, startOfWeek, endOfWeek, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Clock, Building2, Phone, FileText, Upload, Check, Trash2, ChevronLeft, ChevronRight, Loader2, Paperclip, Pencil, Link2, ExternalLink } from 'lucide-react';

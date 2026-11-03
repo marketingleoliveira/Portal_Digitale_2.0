@@ -3,7 +3,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { FileItem, AppRole, isDevLevel } from '@/types/auth';
 import { 
   FileText, Download, Search, Loader2, FolderOpen, Eye, X,
@@ -21,13 +21,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const CURRENT_SUPABASE_HOST = 'ddgbqeaqksiamnnzioyv.supabase.co';
-
 const isFileBroken = (fileUrl: string): boolean => {
   if (!fileUrl) return false;
-  const isSupabaseUrl = fileUrl.includes('.supabase.co/storage/');
-  if (!isSupabaseUrl) return false;
-  return !fileUrl.includes(CURRENT_SUPABASE_HOST);
+  return fileUrl.includes('/storage/v1/');
 };
 
 const Downloads: React.FC = () => {

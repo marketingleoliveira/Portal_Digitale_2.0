@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { MapPin, X, Check, Loader2, MapPinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,33 +35,29 @@ const getBrowserGeolocation = (): Promise<GeolocationPosition> => {
   });
 };
 
-// Reverse geocoding to get city/region from coordinates
+// Reverse geocoding through the Portal backend, using OpenStreetMap data.
 const reverseGeocode = async (lat: number, lng: number): Promise<{ city: string; region: string; country: string }> => {
   try {
-    // Use the Mapbox token to do reverse geocoding
-    const { data: tokenData } = await supabase.functions.invoke('get-mapbox-token');
-    if (tokenData?.token) {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${tokenData.token}&types=place,region,country&language=pt`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const features = data.features || [];
-        const place = features.find((f: any) => f.place_type?.includes('place'));
-        const region = features.find((f: any) => f.place_type?.includes('region'));
-        const country = features.find((f: any) => f.place_type?.includes('country'));
-        
-        return {
-          city: place?.text || 'Unknown',
-          region: region?.text || 'Unknown',
-          country: country?.text || 'Brazil',
-        };
-      }
+    const { data, error } = await supabase.functions.invoke('reverse-geocode', {
+      body: { lat, lng },
+    });
+
+    if (!error && data) {
+      return {
+        city: data.city || 'Unknown',
+        region: data.region || 'Unknown',
+        country: data.country || 'Unknown',
+      };
     }
   } catch (error) {
     console.error('Reverse geocoding failed:', error);
   }
-  return { city: 'Unknown', region: 'Unknown', country: 'Unknown' };
+
+  return {
+    city: 'Unknown',
+    region: 'Unknown',
+    country: 'Unknown',
+  };
 };
 
 const fetchGeoLocation = async (): Promise<GeoLocationData | null> => {

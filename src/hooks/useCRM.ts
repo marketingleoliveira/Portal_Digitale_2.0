@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useEffect } from "react";
@@ -153,7 +153,20 @@ export function useVendedores() {
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
-      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+      type SellerProfile = {
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+        region: string | null;
+        is_active: boolean | null;
+      };
+
+      const typedProfiles =
+        (profiles ?? []) as SellerProfile[];
+
+      const profileMap = new Map<string, SellerProfile>(
+        typedProfiles.map((profile) => [profile.id, profile])
+      );
 
       return roles
         .filter((r) => {

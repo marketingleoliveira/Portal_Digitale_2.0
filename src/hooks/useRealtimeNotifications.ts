@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { AuthUser, isDevLevel } from '@/types/auth';
 import { NotificationAlert } from '@/types/notifications';
 

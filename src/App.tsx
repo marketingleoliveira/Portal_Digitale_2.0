@@ -9,9 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MeetingErrorBoundary from "@/components/MeetingErrorBoundary";
 import { useUserPresence } from "@/hooks/useUserPresence";
-import { useLocationTracking } from "@/hooks/useLocationTracking";
-import { LocationRequestNotification } from "@/components/LocationRequestNotification";
-
+import MandatoryLocationGate from "@/components/MandatoryLocationGate";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -22,6 +20,7 @@ import Users from "./pages/Users";
 import InactiveUsers from "./pages/InactiveUsers";
 import Downloads from "./pages/Downloads";
 import FileManagement from "./pages/FileManagement";
+import RecoveredFiles from "./pages/RecoveredFiles";
 import Notifications from "./pages/Notifications";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
@@ -44,6 +43,8 @@ import GuestMeetingRoom from "./pages/GuestMeetingRoom";
 import CreationMaterials from "./pages/CreationMaterials";
 import CRM from "./pages/CRM";
 import CRMFeeder from "./pages/CRMFeeder";
+import DigitaleAI from "./pages/DigitaleAI";
+import ProspectingAI from "./pages/ProspectingAI";
 import Agendor from "./pages/Agendor";
 
 import Agendamentos from "./pages/Agendamentos";
@@ -71,12 +72,11 @@ const queryClient = new QueryClient();
 // Component to track user presence and location
 const PresenceTracker = ({ children }: { children: React.ReactNode }) => {
   useUserPresence();
-  useLocationTracking();
+
   return (
-    <>
+    <MandatoryLocationGate>
       {children}
-      <LocationRequestNotification />
-    </>
+    </MandatoryLocationGate>
   );
 };
 
@@ -103,6 +103,7 @@ const App = () => (
                   <Route path="/inativos" element={<ProtectedRoute allowedRoles={['dev', 'admin', 'diretoria', 'gerente']}><InactiveUsers /></ProtectedRoute>} />
                   <Route path="/equipe" element={<ProtectedRoute><Team /></ProtectedRoute>} />
                   <Route path="/arquivos" element={<ProtectedRoute allowedRoles={['dev', 'admin', 'criacao', 'diretoria', 'gerente']}><FileManagement /></ProtectedRoute>} />
+                  <Route path="/arquivos-recuperados" element={<ProtectedRoute allowedRoles={['dev', 'diretoria', 'gerente']}><RecoveredFiles /></ProtectedRoute>} />
                   <Route path="/material-criacao" element={<ProtectedRoute allowedRoles={['dev', 'criacao', 'marketing', 'diretoria', 'gerente']}><CreationMaterials /></ProtectedRoute>} />
                   <Route path="/downloads" element={<ProtectedRoute><Downloads /></ProtectedRoute>} />
                   <Route path="/notificacoes" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
@@ -117,6 +118,8 @@ const App = () => (
                   <Route path="/metas" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
                   <Route path="/crm-alimentador" element={<ProtectedRoute allowedRoles={['dev', 'sdr', 'admin', 'diretoria', 'gerente']}><CRMFeeder /></ProtectedRoute>} />
                   <Route path="/crm" element={<ProtectedRoute allowedRoles={['dev', 'vendedor', 'gerente', 'admin', 'diretoria']}><CRM /></ProtectedRoute>} />
+                  <Route path="/ia-digitale" element={<ProtectedRoute allowedEmails={['marketing@digitaletextil.com.br']}><DigitaleAI /></ProtectedRoute>} />
+                  <Route path="/prospeccao-ia" element={<ProtectedRoute allowedEmails={['marketing@digitaletextil.com.br']}><ProspectingAI /></ProtectedRoute>} />
                   <Route path="/agendor" element={<ProtectedRoute><Agendor /></ProtectedRoute>} />
 
                   <Route path="/agendamentos" element={<ProtectedRoute allowedRoles={['dev', 'vendedor', 'gerente', 'admin', 'diretoria']}><Agendamentos /></ProtectedRoute>} />
@@ -132,7 +135,7 @@ const App = () => (
                   <Route path="/depoimentos" element={<ProtectedRoute allowedRoles={['dev', 'marketing', 'diretoria', 'gerente']}><Depoimentos /></ProtectedRoute>} />
                   <Route path="/reunioes" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
                   <Route path="/reserva-salas" element={<ProtectedRoute><RoomReservations /></ProtectedRoute>} />
-                  <Route path="/gravacoes" element={<ProtectedRoute allowedRoles={['dev', 'marketing', 'admin', 'diretoria', 'gerente']}><Recordings /></ProtectedRoute>} />
+                  <Route path="/gravacoes" element={<ProtectedRoute allowedRoles={['dev', 'diretoria', 'gerente']}><><Recordings /></></ProtectedRoute>} />
                   <Route path="/solicitacoes" element={<ProtectedRoute allowedRoles={['dev', 'marketing', 'diretoria', 'gerente']}><Solicitacoes /></ProtectedRoute>} />
                   <Route path="/reembolsos" element={<ProtectedRoute allowedRoles={['dev', 'admin', 'vendedor', 'diretoria', 'gerente']}><Reembolsos /></ProtectedRoute>} />
                   <Route path="/financeiro/reembolsos" element={<ProtectedRoute allowedRoles={['dev', 'financeiro', 'admin', 'diretoria', 'gerente']}><FinanceiroReembolsos /></ProtectedRoute>} />

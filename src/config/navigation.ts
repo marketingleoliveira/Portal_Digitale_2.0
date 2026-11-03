@@ -29,6 +29,8 @@ import {
   Wallet,
   UsersRound,
   SlidersHorizontal,
+  Settings,
+  ArchiveRestore,
 } from "lucide-react";
 import { AppRole } from "@/types/auth";
 
@@ -42,6 +44,7 @@ export interface NavItem {
   /** Menus that can never be hidden through the ERP settings screen. */
   locked?: boolean;
   children?: NavItem[];
+  allowedEmails?: string[];
 }
 
 export const navItems: NavItem[] = [
@@ -63,6 +66,10 @@ export const navItems: NavItem[] = [
       { label: "Registros", href: "/financeiro/registros", icon: MapPin, roles: ["dev", "financeiro", "diretoria", "gerente"] },
     ],
   },
+  { label: "IA DIGITALE", href: "/ia-digitale", icon: Briefcase, allowedEmails: ["marketing@digitaletextil.com.br"], roles: ["dev", "admin", "gerente", "sdr", "diretoria", "marketing", "vendedor", "criacao", "qualidade", "financeiro"], children: [
+    { label: "Configuração e clientes", href: "/ia-digitale", icon: Settings, allowedEmails: ["marketing@digitaletextil.com.br"], roles: ["dev", "admin", "gerente", "sdr", "diretoria", "marketing", "vendedor", "criacao", "qualidade", "financeiro"] },
+    { label: "Monitoramento da prospecção", href: "/prospeccao-ia", icon: Briefcase, allowedEmails: ["marketing@digitaletextil.com.br"], roles: ["dev", "admin", "gerente", "sdr", "diretoria", "marketing", "vendedor", "criacao", "qualidade", "financeiro"] },
+  ] },
   { label: "Agendor", href: "/agendor", icon: Briefcase, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro", "diretoria"] },
   {
     label: "CRM",
@@ -95,12 +102,13 @@ export const navItems: NavItem[] = [
       { label: "Solicitações", href: "/solicitacoes", icon: ClipboardList, roles: ["dev", "marketing", "diretoria", "gerente"] },
     ],
   },
-  { label: "Gravações", href: "/gravacoes", icon: Film, roles: ["dev", "marketing", "diretoria", "gerente"] },
+  { label: "Gravações", href: "/gravacoes", icon: Film, roles: ['dev', 'diretoria', 'gerente'] },
   { label: "Categorias", href: "/categorias", icon: FolderOpen, roles: ["dev", "admin", "criacao", "diretoria", "gerente"] },
   { label: "Usuários", href: "/usuarios", icon: Users, roles: ["dev", "admin", "diretoria", "gerente"] },
   { label: "Inativos", href: "/inativos", icon: UserX, roles: ["dev", "admin", "diretoria", "gerente"] },
   { label: "Equipe", href: "/equipe", icon: UsersRound, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "financeiro", "diretoria"] },
   { label: "Arquivos", href: "/arquivos", icon: Upload, roles: ["dev", "admin", "diretoria", "gerente"] },
+  { label: "Arquivos Recuperados", href: "/arquivos-recuperados", icon: ArchiveRestore, roles: ['dev', 'diretoria', 'gerente'] },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3, roles: ["dev", "admin", "gerente", "diretoria"] },
   { label: "Tabelas de Preços", href: "/precos", icon: DollarSign, roles: ["dev", "admin", "gerente", "vendedor", "sdr", "diretoria"] },
   { label: "Materiais Comerciais", href: "/downloads", icon: FileText, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "diretoria"] },

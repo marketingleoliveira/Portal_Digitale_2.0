@@ -93,16 +93,7 @@ export function DealFormDialog({ open, onOpenChange, pipelineId, stages, deal }:
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="deal-value">Valor (R$)</Label>
-              <Input
-                id="deal-value"
-                value={form.value}
-                onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
-                placeholder="0,00"
-                inputMode="decimal"
-              />
-            </div>
+            
             <div className="space-y-2">
               <Label>Etapa</Label>
               <Select value={form.stage_id} onValueChange={(v) => setForm((f) => ({ ...f, stage_id: v }))}>

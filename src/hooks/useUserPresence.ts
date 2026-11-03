@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 const HEARTBEAT_INTERVAL = 10 * 1000; // 10 seconds
@@ -13,7 +13,7 @@ export const setUserInMeeting = (value: boolean) => {
 };
 
 export const useUserPresence = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const sessionIdRef = useRef<string | null>(null);
   const sessionStartRef = useRef<Date | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -181,45 +181,51 @@ export const useUserPresence = () => {
       // The heartbeat will handle keeping presence alive
     };
 
-    // Handle before unload - use synchronous approach for reliability
+    // Encerramento da sessão usando exclusivamente
+    // o backend local do Portal.
     const handleBeforeUnload = () => {
-      // Mark session as ended and user as offline using synchronous XHR
-      if (sessionIdRef.current && sessionStartRef.current) {
-        const now = new Date();
-        const durationSeconds = Math.floor((now.getTime() - sessionStartRef.current.getTime()) / 1000);
-        
-        // Synchronous XHR for session update
-        const sessionXhr = new XMLHttpRequest();
-        sessionXhr.open('PATCH', `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_activity_sessions?id=eq.${sessionIdRef.current}`, false);
-        sessionXhr.setRequestHeader('Content-Type', 'application/json');
-        sessionXhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-        sessionXhr.setRequestHeader('Authorization', `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
-        sessionXhr.setRequestHeader('Prefer', 'return=minimal');
-        try {
-          sessionXhr.send(JSON.stringify({
-            session_end: now.toISOString(),
-            duration_seconds: durationSeconds,
-          }));
-        } catch (e) {
-          console.error('Error updating session on unload:', e);
+      if (!user?.id) return;
+
+      const now = new Date();
+
+      const durationSeconds =
+        sessionStartRef.current
+          ? Math.floor(
+              (
+                now.getTime() -
+                sessionStartRef.current.getTime()
+              ) / 1000
+            )
+          : 0;
+
+      const token =
+        (session as any)?.access_token ||
+        (session as any)?.accessToken;
+
+      if (!token) return;
+
+      void fetch(
+        '/api/functions/presence-unload',
+        {
+          method: 'POST',
+          keepalive: true,
+          headers: {
+            'Content-Type':
+              'application/json',
+            Authorization:
+              `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId:
+              sessionIdRef.current,
+            sessionEnd:
+              now.toISOString(),
+            durationSeconds,
+            lastSeen:
+              now.toISOString(),
+          }),
         }
-      }
-      
-      // Synchronous XHR for presence update
-      const presenceXhr = new XMLHttpRequest();
-      presenceXhr.open('PATCH', `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_presence?user_id=eq.${user.id}`, false);
-      presenceXhr.setRequestHeader('Content-Type', 'application/json');
-      presenceXhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-      presenceXhr.setRequestHeader('Authorization', `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
-      presenceXhr.setRequestHeader('Prefer', 'return=minimal');
-      try {
-        presenceXhr.send(JSON.stringify({
-          is_online: false,
-          last_seen: new Date().toISOString(),
-        }));
-      } catch (e) {
-        console.error('Error updating presence on unload:', e);
-      }
+      );
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);

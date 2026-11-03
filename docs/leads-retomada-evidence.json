@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-13T19:31:28.946Z",
+  "initial_ai": 116,
+  "available_ai": 118,
+  "external_available": 30,
+  "routine_available": 88,
+  "new_verified_deliveries": 2,
+  "last_delivery": "2026-10-13T19:29:09.999Z",
+  "public_dashboard_http": 200,
+  "published_build_matches": true,
+  "tests_passed": 19,
+  "backup": "/var/backups/digitale-leads-retomada-zP7JRj"
+}

@@ -1,0 +1,24 @@
+import {getSettings,STATES} from '../services/digitale-ai-settings.mjs';
+import express from 'express';
+import {canReadAI} from '../lib/digitale-ai-access.mjs';
+import {db} from '../database.js';
+import {requireAuth} from '../lib/auth.js';
+import {OWNER,windowAt,sqlDate} from '../services/prospecting-policy.mjs';
+import {counts} from '../services/prospecting-auto-delivery.mjs';
+const router=express.Router();
+router.get('/',requireAuth,async(req,res)=>{
+  if(!canReadAI(req.user))return res.status(403).json({error:'forbidden'});
+  const settings=await getSettings(db);
+  const start=sqlDate(windowAt().dayStart);
+  const [[metrics]]=await db.execute(`SELECT SUM(discovered_at>=?) found_today,SUM(status='verifying') verifying,SUM(verified_at>=?) verified_today,SUM(status='duplicate' AND updated_at>=?) duplicates_today,SUM(status='rejected' AND updated_at>=?) rejected_today,SUM(status='review') review FROM prospecting_auto_candidates`,[start,start,start,start]);
+  const [[delivered]]=await db.execute('SELECT COUNT(*) total,SUM(external_batch_id IS NOT NULL) external_total FROM prospecting_auto_deliveries WHERE delivered_at>=?',[start]);
+  const [[available]]=await db.execute(`SELECT COUNT(*) crm_ai_total,SUM(a.external_batch_id IS NOT NULL) crm_external_available,SUM(a.external_batch_id IS NULL) crm_routine_available,MAX(d.created_at) last_delivery_at FROM crm_deals d LEFT JOIN prospecting_auto_deliveries a ON a.deal_id=d.id WHERE d.source IN ('IA','IA PROSPECÇÃO')`,[]);
+  const [[runtime]]=await db.execute('SELECT * FROM prospecting_auto_runtime WHERE id=1');
+  const [runs]=await db.execute('SELECT * FROM prospecting_auto_runs ORDER BY started_at DESC LIMIT 30');
+  const [rejections]=await db.execute("SELECT domain,company,status,reason,updated_at FROM prospecting_auto_candidates WHERE status IN ('rejected','review','duplicate') ORDER BY updated_at DESC LIMIT 50");
+  const [external_batches]=await db.execute("SELECT b.id,b.label,b.target,b.status,b.created_at,b.completed_at,COUNT(d.cnpj) delivered FROM prospecting_external_batches b LEFT JOIN prospecting_auto_deliveries d ON d.external_batch_id=b.id GROUP BY b.id ORDER BY b.created_at DESC LIMIT 10");
+  const active=runtime?.heartbeat_at&&Date.now()-new Date(runtime.heartbeat_at).getTime()<180000;
+  const used=await counts(db);
+  res.json({metrics:{...metrics,...available,delivered_today:delivered.total,external_delivered_today:Number(delivered.external_total||0),global_day_delivered:used.totalDay,routine_day_delivered:used.day,hour_delivered:used.hour,day_delivered:used.day},settings,target_states:settings.states,target_region:settings.states.map(uf=>STATES[uf]).join(', '),hourly_target:settings.hourly_target,daily_target:settings.daily_target,timezone:'America/Sao_Paulo',runtime:{...runtime,status:!settings.enabled?'paused':active?runtime.status:'inactive'},runs,rejections,external_batches});
+});
+export default router;

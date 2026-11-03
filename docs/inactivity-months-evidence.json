@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-13T20:36:37.613Z",
+  "configured_months": 3,
+  "months_form_validated": true,
+  "save_payload_validated": true,
+  "crm_badge_labels": [
+    "Cliente Inativo",
+    "Cliente sem data",
+    "Cliente Ativo"
+  ],
+  "actual_settings_preserved": true,
+  "tests_passed": 32
+}

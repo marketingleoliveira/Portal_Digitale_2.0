@@ -1,3 +1,4 @@
+import {CustomerBadge} from "./CustomerBadge";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,7 +84,7 @@ export function DealsListView({ deals, stages, activities, onSelectDeal, allowTr
               <TableHead>Cliente</TableHead>
               <TableHead>Etapa</TableHead>
               <TableHead>Responsável</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
+              
               <TableHead>Próxima tarefa</TableHead>
               <TableHead>Última movimentação</TableHead>
               <TableHead>Situação</TableHead>
@@ -108,13 +109,13 @@ export function DealsListView({ deals, stages, activities, onSelectDeal, allowTr
                 <TableCell>
                   <DealHealthDot health={health} daysIdle={daysIdle} />
                 </TableCell>
-                <TableCell className="font-medium">{deal.title}</TableCell>
+                <TableCell className="font-medium"><span className="inline-flex items-center gap-2">{deal.title}{deal.customer && <button type="button" aria-label="Cliente já cadastrado" onClick={e=>{e.stopPropagation();onSelectDeal(deal);}}><CustomerBadge status={deal.customer.status} /></button>}</span></TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {deal.organization?.name ?? deal.person?.name ?? "—"}
                 </TableCell>
                 <TableCell className="text-sm">{stage?.name ?? "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{owner}</TableCell>
-                <TableCell className="text-right font-semibold">{formatBRL(Number(deal.value ?? 0))}</TableCell>
+                
                 <TableCell className="text-sm text-muted-foreground">
                   {nextTask
                     ? `${nextTask.title}${nextTask.due_at ? ` • ${new Date(nextTask.due_at).toLocaleDateString("pt-BR")}` : ""}`

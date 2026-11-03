@@ -1,0 +1,498 @@
+{
+  "checked_at": "2026-10-13T14:16:04.883Z",
+  "dashboard_http": 200,
+  "dashboard": {
+    "metrics": {
+      "found_today": "52",
+      "verifying": "1",
+      "verified_today": "7",
+      "duplicates_today": "5",
+      "rejected_today": "3",
+      "review": "36",
+      "delivered_today": 2,
+      "hour_delivered": 3,
+      "day_delivered": 5
+    },
+    "hourly_target": 16,
+    "daily_target": 160,
+    "timezone": "America/Sao_Paulo",
+    "runtime": {
+      "id": 1,
+      "heartbeat_at": "2026-10-13T14:15:54.029Z",
+      "status": "running",
+      "next_run_at": null,
+      "query_cursor": 12,
+      "provider_retry_at": "2026-10-13T14:16:33.795Z",
+      "provider_failures": 1
+    },
+    "runs": [
+      {
+        "id": "870e84f1-a7ae-4feb-9800-7fff79027c10",
+        "started_at": "2026-10-13T14:15:08.298Z",
+        "finished_at": null,
+        "found": 0,
+        "delivered": 0,
+        "deficit": 0,
+        "status": "running",
+        "error": null
+      },
+      {
+        "id": "bbbdf021-726b-4255-bece-cc7486a042ad",
+        "started_at": "2026-10-13T14:14:01.778Z",
+        "finished_at": "2026-10-13T14:15:08.096Z",
+        "found": 10,
+        "delivered": 0,
+        "deficit": 14,
+        "status": "completed",
+        "error": "provider_or_database_failure"
+      },
+      {
+        "id": "a76e9d5e-7561-40a1-84f0-7ea4e1b7e25a",
+        "started_at": "2026-10-13T14:10:44.384Z",
+        "finished_at": "2026-10-13T14:13:06.311Z",
+        "found": 18,
+        "delivered": 1,
+        "deficit": 14,
+        "status": "completed",
+        "error": "search_degraded_duckduckgo_google"
+      },
+      {
+        "id": "aa662507-ff95-4cb3-bcbd-19420b68ac0c",
+        "started_at": "2026-10-13T14:08:43.163Z",
+        "finished_at": "2026-10-13T14:10:44.211Z",
+        "found": 19,
+        "delivered": 0,
+        "deficit": 15,
+        "status": "completed",
+        "error": "search_degraded_duckduckgo_google"
+      },
+      {
+        "id": "6e475a2a-4b80-495f-8af3-0935dc905acb",
+        "started_at": "2026-10-13T14:07:22.456Z",
+        "finished_at": "2026-10-13T14:07:57.812Z",
+        "found": 5,
+        "delivered": 0,
+        "deficit": 15,
+        "status": "completed",
+        "error": null
+      },
+      {
+        "id": "e5a68ee6-6614-4037-b6e7-d50623be89a4",
+        "started_at": "2026-10-13T14:06:22.243Z",
+        "finished_at": "2026-10-13T14:06:22.250Z",
+        "found": 0,
+        "delivered": 0,
+        "deficit": 15,
+        "status": "completed",
+        "error": null
+      },
+      {
+        "id": "f8a18768-2564-456a-b835-892688d44763",
+        "started_at": "2026-10-13T14:05:08.677Z",
+        "finished_at": "2026-10-13T14:05:26.873Z",
+        "found": 0,
+        "delivered": 0,
+        "deficit": 15,
+        "status": "completed",
+        "error": "discovery_empty_or_unavailable"
+      }
+    ],
+    "rejections": [
+      {
+        "domain": "delonay.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "published_phone_missing",
+        "updated_at": "2026-10-13T14:15:54.027Z"
+      },
+      {
+        "domain": "beijodosol.com.br",
+        "company": null,
+        "status": "rejected",
+        "reason": "not_apparel_manufacturer",
+        "updated_at": "2026-10-13T14:15:10.019Z"
+      },
+      {
+        "domain": "glamourdosol.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:15:05.085Z"
+      },
+      {
+        "domain": "blog.fornecedoresdeconfianca.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:13:03.289Z"
+      },
+      {
+        "domain": "cadastroempresa.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:57.977Z"
+      },
+      {
+        "domain": "pt.xhamster.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:54.414Z"
+      },
+      {
+        "domain": "xnxx.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:48.405Z"
+      },
+      {
+        "domain": "br.xhamster.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:44.421Z"
+      },
+      {
+        "domain": "pornobrasil.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:39.439Z"
+      },
+      {
+        "domain": "pornhub.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:34.744Z"
+      },
+      {
+        "domain": "xvideos.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:29.455Z"
+      },
+      {
+        "domain": "pt.pornhub.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:25.158Z"
+      },
+      {
+        "domain": "ilista.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:19.844Z"
+      },
+      {
+        "domain": "lucidarium.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:13.248Z"
+      },
+      {
+        "domain": "conceito.de",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:08.273Z"
+      },
+      {
+        "domain": "eguias.net",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:04.697Z"
+      },
+      {
+        "domain": "solutudo.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:12:01.400Z"
+      },
+      {
+        "domain": "filati.com.br",
+        "company": null,
+        "status": "rejected",
+        "reason": "not_apparel_manufacturer",
+        "updated_at": "2026-10-13T14:11:58.044Z"
+      },
+      {
+        "domain": "dicio.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:11:39.824Z"
+      },
+      {
+        "domain": "situacaocadastral.info",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:11:21.657Z"
+      },
+      {
+        "domain": "lojapapas.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:11:18.323Z"
+      },
+      {
+        "domain": "costure.net.br",
+        "company": null,
+        "status": "duplicate",
+        "reason": "crm_organizations",
+        "updated_at": "2026-10-13T14:11:14.188Z"
+      },
+      {
+        "domain": "vestcompany.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:11:09.655Z"
+      },
+      {
+        "domain": "valoratex.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:11:04.621Z"
+      },
+      {
+        "domain": "avetextil.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:10:41.204Z"
+      },
+      {
+        "domain": "shutterstock.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:10:28.503Z"
+      },
+      {
+        "domain": "br.freepik.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:10:25.049Z"
+      },
+      {
+        "domain": "pixabay.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:10:21.333Z"
+      },
+      {
+        "domain": "tiktok.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:10:18.051Z"
+      },
+      {
+        "domain": "magnific.com",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:10:13.491Z"
+      },
+      {
+        "domain": "br.pinterest.com",
+        "company": null,
+        "status": "review",
+        "reason": "robots_disallow",
+        "updated_at": "2026-10-13T14:10:09.870Z"
+      },
+      {
+        "domain": "reddit.com",
+        "company": null,
+        "status": "review",
+        "reason": "robots_disallow",
+        "updated_at": "2026-10-13T14:10:06.774Z"
+      },
+      {
+        "domain": "biquinisfebela.com.br",
+        "company": null,
+        "status": "duplicate",
+        "reason": "crm_organizations",
+        "updated_at": "2026-10-13T14:10:03.728Z"
+      },
+      {
+        "domain": "fabricas.moda",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:09:53.216Z"
+      },
+      {
+        "domain": "sacoleiradesucesso.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:09:46.246Z"
+      },
+      {
+        "domain": "fornecedoresdeconfianca.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:09:39.563Z"
+      },
+      {
+        "domain": "laplaya.com.br",
+        "company": null,
+        "status": "duplicate",
+        "reason": "crm_organizations",
+        "updated_at": "2026-10-13T14:09:32.800Z"
+      },
+      {
+        "domain": "maregeu.com.br",
+        "company": null,
+        "status": "duplicate",
+        "reason": "crm_organizations",
+        "updated_at": "2026-10-13T14:09:10.517Z"
+      },
+      {
+        "domain": "forneceb2b.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:09:03.874Z"
+      },
+      {
+        "domain": "trixfitatacado.com.br",
+        "company": null,
+        "status": "duplicate",
+        "reason": "crm_organizations",
+        "updated_at": "2026-10-13T14:07:54.803Z"
+      },
+      {
+        "domain": "modella.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:07:44.226Z"
+      },
+      {
+        "domain": "b2brazil.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:07:35.408Z"
+      },
+      {
+        "domain": "talindamodafitness.com.br",
+        "company": null,
+        "status": "rejected",
+        "reason": "not_apparel_manufacturer",
+        "updated_at": "2026-10-13T14:07:31.864Z"
+      },
+      {
+        "domain": "mavimaaar.com.br",
+        "company": null,
+        "status": "review",
+        "reason": "website_cnpj_inconclusive",
+        "updated_at": "2026-10-13T14:07:25.133Z"
+      }
+    ]
+  },
+  "deliveries": [
+    {
+      "cnpj": "16624806000190",
+      "deal_id": "64963992-d65c-439a-8234-41416d939727",
+      "organization_id": "83972be0-65f1-4884-a61a-e59aa74f941b",
+      "person_id": "d426e40c-0699-4e65-bdfb-fb1e48f56ed4",
+      "owner_id": "fba75bd9-8f92-4e2b-83f9-3bc48d7fa4bd",
+      "delivered_at": "2026-10-13T14:11:36.409Z",
+      "proof": {
+        "version": 2,
+        "owner_id": "fba75bd9-8f92-4e2b-83f9-3bc48d7fa4bd",
+        "checked_at": "2026-10-13T14:11:36.393Z",
+        "cnpj": "16624806000190",
+        "phone": "31982445304",
+        "company": "RANE MODA PRAIA E FITNESS",
+        "domain": "ranemoda.com.br",
+        "phone_call_tested": false,
+        "registry": {
+          "url": "https://brasilapi.com.br/api/cnpj/v1/16624806000190",
+          "cnpj": "16624806000190",
+          "active": true,
+          "legal_name": "RANE MODA E CONFECCOES LTDA",
+          "trade_name": "RANE MODA PRAIA E FITNESS",
+          "source_updated_at": null
+        },
+        "website": {
+          "url": "https://www.ranemoda.com.br/marca-propria-private-label",
+          "cnpj_url": "https://www.ranemoda.com.br/marca-propria-private-label",
+          "cnpj_match": true,
+          "phone_match": true
+        },
+        "discovery_url": "https://www.ranemoda.com.br/marca-propria-private-label"
+      },
+      "title": "RANE MODA PRAIA E FITNESS",
+      "source": "IA PROSPECÇÃO",
+      "status": "aberto",
+      "stage": "Prospecção",
+      "owner": "Nicolle"
+    },
+    {
+      "cnpj": "41544462000157",
+      "deal_id": "dc761019-3039-4d39-be4f-3ca89aa98c77",
+      "organization_id": "aa183238-2091-42e5-bf5d-6c4a17b65316",
+      "person_id": "85f957d7-d5ea-4232-9655-158774ce5841",
+      "owner_id": "fba75bd9-8f92-4e2b-83f9-3bc48d7fa4bd",
+      "delivered_at": "2026-10-13T14:15:31.980Z",
+      "proof": {
+        "version": 2,
+        "owner_id": "fba75bd9-8f92-4e2b-83f9-3bc48d7fa4bd",
+        "checked_at": "2026-10-13T14:15:31.959Z",
+        "cnpj": "41544462000157",
+        "phone": "11947998434",
+        "company": "VELUIE",
+        "domain": "veluie.com.br",
+        "phone_call_tested": false,
+        "registry": {
+          "url": "https://brasilapi.com.br/api/cnpj/v1/41544462000157",
+          "cnpj": "41544462000157",
+          "active": true,
+          "legal_name": "VELUIE LTDA",
+          "trade_name": "VELUIE",
+          "source_updated_at": null
+        },
+        "website": {
+          "url": "https://veluie.com.br/",
+          "cnpj_url": "https://veluie.com.br/",
+          "cnpj_match": true,
+          "phone_match": true
+        },
+        "discovery_url": "https://veluie.com.br/"
+      },
+      "title": "VELUIE",
+      "source": "IA PROSPECÇÃO",
+      "status": "aberto",
+      "stage": "Prospecção",
+      "owner": "Nicolle"
+    }
+  ],
+  "tests_passed": 11,
+  "build": "passed",
+  "live_replay": {
+    "status": 200,
+    "created": false,
+    "duplicate": true,
+    "existing_deal_unchanged": true
+  },
+  "backup": "/var/backups/digitale-prospecting-20261013-140345"
+}

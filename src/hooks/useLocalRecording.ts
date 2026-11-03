@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { DailyCall } from '@daily-co/daily-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 
 async function uploadRecordingToCloud(
   blob: Blob,

@@ -4,7 +4,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { UserProfile, AppRole, ROLE_LABELS, hasFullAccess } from '@/types/auth';
 import RoleBadge from '@/components/RoleBadge';
 import { useToast } from '@/hooks/use-toast';

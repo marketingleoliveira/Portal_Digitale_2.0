@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { AccessLog, AppRole, isManagerOrAbove, isDevLevel } from '@/types/auth';
 import {
   Table,

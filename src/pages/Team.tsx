@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { AppRole, ROLE_LABELS } from '@/types/auth';
 import RoleBadge from '@/components/RoleBadge';
 import { Loader2, Users, Code, Shield, UserCog, User, Palette, Mail, X, Linkedin, Megaphone, Target, BadgeCheck } from 'lucide-react';

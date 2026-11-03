@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import {

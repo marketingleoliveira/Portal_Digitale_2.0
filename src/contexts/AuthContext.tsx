@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
+import type { User, Session } from '@/integrations/local/client';
 import { AppRole, UserProfile, AuthUser, isDevLevel } from '@/types/auth';
 import { getIpAddress } from '@/hooks/useIpAddress';
 
@@ -56,151 +56,177 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setViewAsRoleState(role);
   }, []);
 
-  const fetchUserData = useCallback(async (authUser: User, isLogin: boolean = false, force: boolean = false) => {
-    // Skip if we already fetched data for this user (unless forced)
-    if (!force && lastFetchedUserIdRef.current === authUser.id && userDataFetchedRef.current) {
-      return;
-    }
+
+  // AUTH_PROFILE_RECOVERY_V2
+  const authRequestRef = useRef(0);
+
+  const fetchUserData = useCallback(async (
+    authUser: User,
+    isLogin: boolean = false,
+    force: boolean = false
+  ) => {
+    if (!force && lastFetchedUserIdRef.current === authUser.id
+        && userDataFetchedRef.current) return;
+
+    const request = ++authRequestRef.current;
     setUserDataLoading(true);
-    setUserDataFetchedState(false);
     try {
-      // Fetch profile with retry logic
-      let profile = null;
-      let retryCount = 0;
-      const maxRetries = 3;
-      
-      while (!profile && retryCount < maxRetries) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authUser.id)
-          .maybeSingle();
-        
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        }
-        
-        profile = profileData;
-        
-        if (!profile && retryCount < maxRetries - 1) {
-          // Wait a bit before retrying (profile might not be created yet for new users)
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        retryCount++;
-      }
+      let profile: UserProfile | null = null;
+      let role: AppRole | null = null;
 
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', authUser.id)
-        .maybeSingle();
-
-      if (roleError) {
-        console.error('Error fetching role:', roleError);
-      }
-
-      const authUserData: AuthUser = {
-        id: authUser.id,
-        email: authUser.email || '',
-        profile: profile as UserProfile | null,
-        role: (roleData?.role as AppRole) || null,
-      };
-
-      setUser(authUserData);
-
-      // Log access with IP only on login
-      if (isLogin && profile) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (request !== authRequestRef.current) return;
         try {
-          const ipAddress = await getIpAddress();
-          await supabase.from('access_logs').insert({
-            user_id: authUser.id,
-            action: 'login',
-            resource_type: 'session',
-            ip_address: ipAddress,
-          });
-        } catch (logError) {
-          console.error('Error logging access:', logError);
+          const results: any = await Promise.race([
+            Promise.all([
+              supabase.from('profiles').select('*')
+                .eq('id', authUser.id).maybeSingle(),
+              supabase.from('user_roles').select('role')
+                .eq('user_id', authUser.id).maybeSingle(),
+            ]),
+            new Promise((_, reject) => {
+              const timer = window.setTimeout(
+                () => reject(new Error('profile_request_timeout')), 12000
+              );
+              // O timer não mantém nenhuma sessão ou permissão.
+              void timer;
+            }),
+          ]);
+          const [profileResult, roleResult] = results;
+          if (!profileResult.error && !roleResult.error
+              && profileResult.data && roleResult.data?.role) {
+            profile = profileResult.data;
+            role = roleResult.data.role;
+            break;
+          }
+        } catch (error) {
+          console.error('Falha temporária ao carregar perfil:', error);
+        }
+        if (attempt < 2) {
+          await new Promise(resolve => window.setTimeout(resolve, 1000));
         }
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      // Still set a basic user object to prevent blank screens
+
+      if (request !== authRequestRef.current) return;
+      if (!profile || !role) {
+        // Nunca considerar um usuário sem perfil/cargo como carregado.
+        setUserDataFetchedState(false);
+        return;
+      }
+
       setUser({
         id: authUser.id,
         email: authUser.email || '',
-        profile: null,
-        role: null,
+        profile,
+        role,
       });
-    } finally {
-      setUserDataLoading(false);
-      setUserDataFetchedState(true);
       lastFetchedUserIdRef.current = authUser.id;
+      setUserDataFetchedState(true);
+
+      if (isLogin) {
+        void (async () => {
+          try {
+            const ipAddress = await getIpAddress();
+            await supabase.from('access_logs').insert({
+              user_id: authUser.id,
+              action: 'login',
+              resource_type: 'session',
+              ip_address: ipAddress,
+            });
+          } catch (error) {
+            console.error('Error logging access:', error);
+          }
+        })();
+      }
+    } finally {
+      if (request === authRequestRef.current) {
+        setUserDataLoading(false);
+      }
     }
   }, [setUserDataFetchedState]);
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
+    let recovering = false;
 
-    // Check for existing session first
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return;
-      
-      setSession(session);
-      
-      if (session?.user) {
-        fetchUserData(session.user, false).finally(() => {
-          if (isMounted) setLoading(false);
-        });
-      } else {
-        setLoading(false);
-      }
-    });
+    const clearIdentity = () => {
+      ++authRequestRef.current;
+      setSession(null);
+      setUser(null);
+      lastFetchedUserIdRef.current = null;
+      setUserDataFetchedState(false);
+      setLoading(false);
+    };
 
-    // Set up auth state listener - IGNORE TOKEN_REFRESHED to prevent reloads
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!isMounted) return;
-        
-        // Ignore TOKEN_REFRESHED events completely - they cause unnecessary reloads
-        if (event === 'TOKEN_REFRESHED') {
+    const recover = async (force: boolean = false) => {
+      if (!active || recovering) return;
+      recovering = true;
+      try {
+        const result = await supabase.auth.refreshSession();
+        if (!active) return;
+        const next = result.data?.session;
+        if (!next?.user) {
+          if (!result.error) clearIdentity();
           return;
         }
-        
-        setSession(session);
-        
-        if (session?.user) {
-          // Only fetch on actual sign in or user update
-          const isSameFetchedUser = lastFetchedUserIdRef.current === session.user.id && userDataFetchedRef.current;
+        setSession(next);
+        await fetchUserData(next.user, false, force);
+      } catch (error) {
+        console.error('Falha temporária ao restaurar sessão:', error);
+      } finally {
+        recovering = false;
+        if (active) setLoading(false);
+      }
+    };
 
-          // The auth client may emit SIGNED_IN again when the browser tab regains focus.
-          // Treat that as a no-op so protected pages are not replaced by a loading screen,
-          // which would unmount and close open dialogs/popups.
-          if (event === 'SIGNED_IN' && isSameFetchedUser) {
-            setLoading(false);
-            return;
-          }
-
-          const isLogin = event === 'SIGNED_IN' && !isSameFetchedUser;
-          const shouldFetch = isLogin || event === 'USER_UPDATED';
-          
-          if (shouldFetch) {
-            setTimeout(() => {
-              fetchUserData(session.user, isLogin, isLogin || event === 'USER_UPDATED');
-            }, 0);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          lastFetchedUserIdRef.current = null;
-          setUserDataFetchedState(false);
-          setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event: string, next: Session | null) => {
+        if (!active || event === 'INITIAL_SESSION') return;
+        if (event === 'SIGNED_OUT') {
+          clearIdentity();
+          return;
         }
+        if (!next?.user) return;
+        setSession(next);
+
+        if (event === 'TOKEN_REFRESHED') return;
+        const sameUser = lastFetchedUserIdRef.current === next.user.id;
+        if (!sameUser) {
+          setUser(null);
+          setUserDataFetchedState(false);
+        }
+        void fetchUserData(
+          next.user,
+          event === 'SIGNED_IN' && !sameUser,
+          event === 'USER_UPDATED' || !userDataFetchedRef.current
+        ).finally(() => {
+          if (active) setLoading(false);
+        });
       }
     );
 
+    void recover(true);
+
+    const onReturn = () => {
+      if (document.visibilityState === 'visible') void recover(true);
+    };
+    const retry = window.setInterval(() => {
+      if (!userDataFetchedRef.current
+          && document.visibilityState === 'visible') void recover(true);
+    }, 5000);
+
+    window.addEventListener('focus', onReturn);
+    window.addEventListener('online', onReturn);
+    document.addEventListener('visibilitychange', onReturn);
+
     return () => {
-      isMounted = false;
+      active = false;
+      ++authRequestRef.current;
       subscription.unsubscribe();
+      window.clearInterval(retry);
+      window.removeEventListener('focus', onReturn);
+      window.removeEventListener('online', onReturn);
+      document.removeEventListener('visibilitychange', onReturn);
     };
   }, [fetchUserData, setUserDataFetchedState]);
 
@@ -219,10 +245,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updatePassword = async (newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-    return { error: error as Error | null };
+    try {
+      const token =
+        (session as any)?.access_token ||
+        (session as any)?.accessToken;
+
+      if (!token) {
+        return {
+          error: new Error(
+            'Sessão inválida. Faça login novamente.'
+          ),
+        };
+      }
+
+      const response = await fetch(
+        '/api/auth/password',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            password: newPassword,
+          }),
+        }
+      );
+
+      const result =
+        await response
+          .json()
+          .catch(() => ({}));
+
+      if (!response.ok) {
+        return {
+          error: new Error(
+            result?.error?.message ||
+            result?.message ||
+            'Erro ao atualizar a senha.'
+          ),
+        };
+      }
+
+      return {
+        error: null,
+      };
+    } catch (error) {
+      return {
+        error:
+          error instanceof Error
+            ? error
+            : new Error(
+                'Erro ao atualizar a senha.'
+              ),
+      };
+    }
   };
 
   // Combined loading state - only show loading until initial data fetch is complete

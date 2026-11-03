@@ -1,300 +1,1108 @@
-import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/layouts/DashboardLayout";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Download, ExternalLink, Video, Search, Loader2, FileVideo, Trash2 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+import {
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 
-interface RecordingRow {
+import {
+  format
+} from "date-fns";
+
+import {
+  ptBR
+} from "date-fns/locale";
+
+import {
+  Download,
+  Eye,
+  FileVideo,
+  Loader2,
+  RefreshCw,
+  Search,
+  Trash2,
+  Video
+} from "lucide-react";
+
+import DashboardLayout
+  from "@/components/layouts/DashboardLayout";
+
+import {
+  Badge
+} from "@/components/ui/badge";
+
+import {
+  Button
+} from "@/components/ui/button";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+
+import {
+  Input
+} from "@/components/ui/input";
+
+import {
+  useAuth
+} from "@/contexts/AuthContext";
+
+import {
+  toast
+} from "sonner";
+import { useState as useDevRecordingDeleteState } from "react";
+import {
+  Trash2 as DevRecordingTrash,
+  Loader2 as DevRecordingLoader
+} from "lucide-react";
+
+
+/* DEV_RECORDING_CARD_DELETE_V1 */
+function DeveloperRecordingCardDelete({
+  recording
+}: {
+  recording: any;
+}) {
+
+  const {
+    realRole,
+    session
+  } =
+    useAuth() as any;
+
+
+  const [
+    deleting,
+    setDeleting
+  ] =
+    useDevRecordingDeleteState(
+      false
+    );
+
+
+  const role =
+    String(
+      realRole
+      || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const isDeveloper =
+    role === "dev"
+    ||
+    role === "desenvolvedor";
+
+
+  if (!isDeveloper) {
+
+    return null;
+  }
+
+
+  const status =
+    String(
+      recording?.status
+      || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const active =
+    new Set([
+      "starting",
+      "recording",
+      "running",
+      "processing",
+      "active",
+      "in_progress"
+    ])
+      .has(
+        status
+      );
+
+
+  const failed =
+    new Set([
+      "failed",
+      "failure",
+      "error",
+      "aborted",
+      "abort",
+      "timeout",
+      "timed_out",
+      "cancelled",
+      "canceled"
+    ])
+      .has(
+        status
+      )
+    ||
+    Boolean(
+      String(
+        recording
+          ?.error_message
+        || ""
+      ).trim()
+    );
+
+
+  const remove =
+    async (
+      event:
+        React.MouseEvent
+    ) => {
+
+      event.preventDefault();
+      event.stopPropagation();
+
+
+      if (
+        active
+        ||
+        deleting
+      ) {
+
+        return;
+      }
+
+
+      const confirmed =
+        window.confirm(
+          failed
+            ?
+              "Excluir esta gravação que falhou?\\n\\n"
+              +
+              "O registro da falha e qualquer arquivo parcial serão removidos definitivamente."
+            :
+              "Excluir esta gravação?\\n\\n"
+              +
+              "O arquivo e o registro serão removidos definitivamente."
+        );
+
+
+      if (!confirmed) {
+
+        return;
+      }
+
+
+      const token =
+        session
+          ?.access_token
+        ||
+        session
+          ?.accessToken
+        ||
+        "";
+
+
+      if (!token) {
+
+        window.alert(
+          "Sessão inválida. Entre novamente no Portal."
+        );
+
+        return;
+      }
+
+
+      setDeleting(
+        true
+      );
+
+
+      try {
+
+        const response =
+          await fetch(
+            `/api/recordings/developer/manage/${
+              encodeURIComponent(
+                String(
+                  recording.id
+                )
+              )
+            }`,
+            {
+              method:
+                "DELETE",
+
+              headers: {
+                Authorization:
+                  `Bearer ${token}`
+              }
+            }
+          );
+
+
+        const body =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            body
+              ?.error
+              ?.message
+            ||
+            "Não foi possível excluir esta gravação."
+          );
+        }
+
+
+        /*
+         * Atualiza a listagem original.
+         */
+        window.location.reload();
+
+
+      } catch (
+        error:
+          any
+      ) {
+
+        window.alert(
+          error
+            ?.message
+          ||
+          "Erro ao excluir gravação."
+        );
+
+
+        setDeleting(
+          false
+        );
+      }
+    };
+
+
+  return (
+    <button
+      type="button"
+      onClick={remove}
+      disabled={
+        active
+        ||
+        deleting
+      }
+      title={
+        active
+          ?
+            "Gravação em andamento"
+          :
+        failed
+          ?
+            "Excluir gravação que falhou"
+          :
+            "Excluir gravação"
+      }
+      aria-label={
+        failed
+          ?
+            "Excluir gravação que falhou"
+          :
+            "Excluir gravação"
+      }
+      className="
+        absolute
+        right-2
+        top-2
+        z-30
+        inline-flex
+        h-9
+        w-9
+        items-center
+        justify-center
+        rounded-full
+        border
+        border-red-500/40
+        bg-red-600
+        text-white
+        shadow-md
+        transition
+        hover:bg-red-700
+        focus:outline-none
+        focus:ring-2
+        focus:ring-red-400
+        focus:ring-offset-2
+        disabled:cursor-not-allowed
+        disabled:opacity-40
+      "
+    >
+
+      {
+        deleting
+          ?
+            <DevRecordingLoader
+              className="
+                h-4
+                w-4
+                animate-spin
+              "
+            />
+          :
+            <DevRecordingTrash
+              className="
+                h-4
+                w-4
+              "
+            />
+      }
+
+    </button>
+  );
+}
+
+
+
+
+interface Recording {
   id: string;
   meeting_id: string | null;
   meeting_title: string;
   meeting_date: string;
   recording_id: string;
-  download_url: string | null;
   duration_seconds: number | null;
   created_at: string;
-  source: "db" | "storage";
-  storage_path?: string;
-  size_bytes?: number;
+  status: string;
+  size_bytes: number | null;
+  play_url: string | null;
+  download_url: string | null;
+  error_message?: string | null;
 }
 
+
 export default function Recordings() {
-  const { user } = useAuth();
-  const [recordings, setRecordings] = useState<RecordingRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
-  const isDev = user?.role === "dev";
+  const {
+    user,
+    session
+  } = useAuth();
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      // 1. From DB
-      const { data: dbRecs, error: dbErr } = await supabase
-        .from("meeting_recordings")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (dbErr) throw dbErr;
+  const [
+    recordings,
+    setRecordings
+  ] = useState<Recording[]>([]);
 
-      const fromDb: RecordingRow[] = (dbRecs || []).map((r) => ({
-        id: r.id,
-        meeting_id: r.meeting_id,
-        meeting_title: r.meeting_title,
-        meeting_date: r.meeting_date,
-        recording_id: r.recording_id,
-        download_url: r.download_url,
-        duration_seconds: r.duration_seconds,
-        created_at: r.created_at,
-        source: "db" as const,
-      }));
+  const [
+    loading,
+    setLoading
+  ] = useState(true);
 
-      // 2. From Storage (recursively list all user folders to catch orphans)
-      const orphans: RecordingRow[] = [];
-      const { data: rootEntries } = await supabase.storage
-        .from("meeting-recordings")
-        .list("", { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
+  const [
+    search,
+    setSearch
+  ] = useState("");
 
-      const knownUrls = new Set(fromDb.map((d) => d.download_url).filter(Boolean));
+  const token =
+    (session as any)
+      ?.access_token
+    ||
+    (session as any)
+      ?.accessToken;
 
-      const folders = (rootEntries || []).filter((e) => e.id === null || !e.metadata);
-      for (const folder of folders) {
-        const { data: files } = await supabase.storage
-          .from("meeting-recordings")
-          .list(folder.name, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
-        for (const f of files || []) {
-          if (!f.name.match(/\.(webm|mp4|mkv)$/i)) continue;
-          const path = `${folder.name}/${f.name}`;
-          const { data: pub } = supabase.storage.from("meeting-recordings").getPublicUrl(path);
-          if (knownUrls.has(pub.publicUrl)) continue;
-          orphans.push({
-            id: `orphan-${path}`,
-            meeting_id: null,
-            meeting_title: f.name.replace(/\.(webm|mp4|mkv)$/i, "").replace(/_/g, " "),
-            meeting_date: f.created_at || new Date().toISOString(),
-            recording_id: path,
-            download_url: pub.publicUrl,
-            duration_seconds: null,
-            created_at: f.created_at || new Date().toISOString(),
-            source: "storage",
-            storage_path: path,
-            size_bytes: (f.metadata as any)?.size,
-          });
+  const canDelete =
+    [
+      "dev",
+      "admin"
+    ].includes(
+      String(
+        user?.role || ""
+      )
+    );
+
+
+  const load =
+    async (
+      silent = false
+    ) => {
+
+      if (!token) {
+        return;
+      }
+
+      if (!silent) {
+        setLoading(true);
+      }
+
+      try {
+
+        const response =
+          await fetch(
+            "/api/recordings/list",
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`
+              }
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error?.message
+            ||
+            "Erro ao carregar gravações"
+          );
+        }
+
+        setRecordings(
+          result.data || []
+        );
+
+      } catch (error: any) {
+
+        if (!silent) {
+          toast.error(
+            error?.message
+            ||
+            "Erro ao carregar gravações"
+          );
+        }
+
+      } finally {
+
+        if (!silent) {
+          setLoading(false);
         }
       }
-      // Also files at root
-      for (const f of rootEntries || []) {
-        if (!f.name.match(/\.(webm|mp4|mkv)$/i)) continue;
-        const { data: pub } = supabase.storage.from("meeting-recordings").getPublicUrl(f.name);
-        if (knownUrls.has(pub.publicUrl)) continue;
-        orphans.push({
-          id: `orphan-${f.name}`,
-          meeting_id: null,
-          meeting_title: f.name.replace(/\.(webm|mp4|mkv)$/i, "").replace(/_/g, " "),
-          meeting_date: f.created_at || new Date().toISOString(),
-          recording_id: f.name,
-          download_url: pub.publicUrl,
-          duration_seconds: null,
-          created_at: f.created_at || new Date().toISOString(),
-          source: "storage",
-          storage_path: f.name,
-          size_bytes: (f.metadata as any)?.size,
-        });
-      }
+    };
 
-      const combined = [...fromDb, ...orphans].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
-      setRecordings(combined);
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Erro ao carregar gravações");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
+
+    if (!token) {
+      return;
+    }
+
     load();
-  }, []);
 
-  const normalize = (s: string) => s.toLowerCase().trim();
-  const filtered = recordings.filter((r) => {
-    const q = normalize(search);
-    if (!q) return true;
-    if (normalize(r.meeting_title).includes(q)) return true;
-    try {
-      const d = new Date(r.meeting_date);
-      const formats = [
-        format(d, "dd/MM/yyyy", { locale: ptBR }),
-        format(d, "dd/MM/yy", { locale: ptBR }),
-        format(d, "dd-MM-yyyy", { locale: ptBR }),
-        format(d, "yyyy-MM-dd", { locale: ptBR }),
-        format(d, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
-        format(d, "MMMM yyyy", { locale: ptBR }),
-        format(d, "MMMM", { locale: ptBR }),
-        format(d, "dd/MM", { locale: ptBR }),
-        format(d, "HH:mm", { locale: ptBR }),
-      ];
-      return formats.some((f) => normalize(f).includes(q));
-    } catch {
-      return false;
-    }
-  });
+    const timer =
+      window.setInterval(
+        () => {
+          load(true);
+        },
+        10000
+      );
 
-  const formatDuration = (sec: number | null) => {
-    if (!sec) return "—";
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}m ${s}s`;
-  };
+    return () =>
+      window.clearInterval(
+        timer
+      );
 
-  const formatSize = (b?: number) => {
-    if (!b) return "";
-    if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
-    return `${(b / 1024 / 1024).toFixed(1)} MB`;
-  };
+  }, [token]);
 
-  const handleDelete = async (rec: RecordingRow) => {
-    if (!isDev) return;
-    if (!confirm(`Excluir gravação "${rec.meeting_title}"?`)) return;
-    try {
-      if (rec.source === "db") {
-        // Try to remove storage object too
-        if (rec.download_url) {
-          const match = rec.download_url.match(/meeting-recordings\/(.+)$/);
-          if (match) {
-            await supabase.storage.from("meeting-recordings").remove([match[1]]);
-          }
+
+  const filtered =
+    useMemo(
+      () => {
+
+        const q =
+          search
+            .trim()
+            .toLowerCase();
+
+        if (!q) {
+          return recordings;
         }
-        await supabase.from("meeting_recordings").delete().eq("id", rec.id);
-      } else if (rec.storage_path) {
-        await supabase.storage.from("meeting-recordings").remove([rec.storage_path]);
+
+        return recordings.filter(
+          recording => {
+
+            const title =
+              String(
+                recording.meeting_title
+                ||
+                ""
+              ).toLowerCase();
+
+            if (
+              title.includes(q)
+            ) {
+              return true;
+            }
+
+            try {
+
+              const date =
+                new Date(
+                  recording.meeting_date
+                );
+
+              const formatted =
+                format(
+                  date,
+                  "dd/MM/yyyy HH:mm",
+                  {
+                    locale:
+                      ptBR
+                  }
+                ).toLowerCase();
+
+              return formatted.includes(
+                q
+              );
+
+            } catch {
+
+              return false;
+            }
+          }
+        );
+      },
+
+      [
+        recordings,
+        search
+      ]
+    );
+
+
+  const duration =
+    (
+      seconds:
+        number | null
+    ) => {
+
+      if (!seconds) {
+        return "—";
       }
-      toast.success("Gravação excluída");
-      load();
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao excluir");
-    }
-  };
+
+      const hours =
+        Math.floor(
+          seconds / 3600
+        );
+
+      const minutes =
+        Math.floor(
+          (
+            seconds % 3600
+          ) / 60
+        );
+
+      const secs =
+        seconds % 60;
+
+      if (hours > 0) {
+        return (
+          `${hours}h `
+          +
+          `${minutes}m `
+          +
+          `${secs}s`
+        );
+      }
+
+      return (
+        `${minutes}m `
+        +
+        `${secs}s`
+      );
+    };
+
+
+  const fileSize =
+    (
+      bytes:
+        number | null
+    ) => {
+
+      if (!bytes) {
+        return "—";
+      }
+
+      if (
+        bytes <
+        1024 * 1024
+      ) {
+        return (
+          `${(
+            bytes / 1024
+          ).toFixed(0)} KB`
+        );
+      }
+
+      if (
+        bytes <
+        1024 * 1024 * 1024
+      ) {
+        return (
+          `${(
+            bytes
+            /
+            1024
+            /
+            1024
+          ).toFixed(1)} MB`
+        );
+      }
+
+      return (
+        `${(
+          bytes
+          /
+          1024
+          /
+          1024
+          /
+          1024
+        ).toFixed(2)} GB`
+      );
+    };
+
+
+  const statusLabel =
+    (
+      status: string
+    ) => {
+
+      switch (status) {
+
+        case "starting":
+          return "Iniciando";
+
+        case "recording":
+          return "Gravando";
+
+        case "processing":
+          return "Processando";
+
+        case "completed":
+          return "Concluída";
+
+        case "failed":
+          return "Falhou";
+
+        case "aborted":
+          return "Interrompida";
+
+        case "limit_reached":
+          return "Interrompida";
+
+        default:
+          return status;
+      }
+    };
+
+
+  const deleteRecording =
+    async (
+      recording:
+        Recording
+    ) => {
+
+      if (
+        !canDelete
+        ||
+        !token
+      ) {
+        return;
+      }
+
+      if (
+        !window.confirm(
+          `Excluir "${recording.meeting_title}"?`
+        )
+      ) {
+        return;
+      }
+
+      try {
+
+        const response =
+          await fetch(
+            `/api/recordings/${encodeURIComponent(
+              recording.id
+            )}`,
+            {
+              method:
+                "DELETE",
+
+              headers: {
+                Authorization:
+                  `Bearer ${token}`
+              }
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error?.message
+            ||
+            "Erro ao excluir"
+          );
+        }
+
+        toast.success(
+          "Gravação excluída"
+        );
+
+        await load();
+
+      } catch (error: any) {
+
+        toast.error(
+          error?.message
+          ||
+          "Erro ao excluir gravação"
+        );
+      }
+    };
+
 
   return (
     <DashboardLayout>
+
       <div className="space-y-6">
+
         <div className="flex items-center justify-between flex-wrap gap-4">
+
           <div>
+
             <h1 className="text-3xl font-bold flex items-center gap-2">
+
               <FileVideo className="w-7 h-7 text-primary" />
+
               Gravações
+
             </h1>
+
             <p className="text-muted-foreground mt-1">
-              Todas as gravações de reuniões e depoimentos disponíveis na plataforma
+
+              Todas as reuniões do Digitale Meet são gravadas automaticamente.
+
             </p>
+
           </div>
-          <Button onClick={load} variant="outline" disabled={loading}>
-            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+
+          <Button
+            variant="outline"
+            disabled={loading}
+            onClick={() =>
+              load()
+            }
+          >
+
+            {loading
+              ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )
+              : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+
             Atualizar
+
           </Button>
+
         </div>
 
+
         <Card>
+
           <CardHeader className="pb-3">
+
             <CardTitle className="text-sm flex items-center gap-2">
+
               <Search className="w-4 h-4" />
-              Buscar
+
+              Buscar gravação
+
             </CardTitle>
+
           </CardHeader>
+
           <CardContent>
+
             <Input
-              placeholder="Buscar por título ou data (ex: 23/04/2026, abril, 23/04)..."
+              placeholder="Buscar por reunião ou data"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={
+                e =>
+                  setSearch(
+                    e.target.value
+                  )
+              }
             />
+
           </CardContent>
+
         </Card>
 
+
         {loading ? (
+
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+
           </div>
+
         ) : filtered.length === 0 ? (
+
           <Card>
-            <CardContent className="py-12 text-center">
-              <Video className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">Nenhuma gravação encontrada</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                As gravações feitas a partir de agora serão automaticamente enviadas para a nuvem
-                ao parar a gravação.
+
+            <CardContent className="py-14 text-center">
+
+              <Video className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+
+              <p className="font-medium">
+                Nenhuma gravação encontrada
               </p>
+
+              <p className="text-sm text-muted-foreground mt-2">
+                Ao iniciar uma nova chamada, a gravação começará automaticamente.
+              </p>
+
             </CardContent>
+
           </Card>
+
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((rec) => (
-              <Card key={rec.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-sm truncate">{rec.meeting_title}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {format(new Date(rec.meeting_date), "dd/MM/yyyy 'às' HH:mm", {
-                          locale: ptBR,
-                        })}
-                      </p>
-                    </div>
-                    {rec.source === "storage" && (
-                      <Badge variant="outline" className="text-[10px]">
-                        Órfã
-                      </Badge>
-                    )}
-                  </div>
 
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>⏱ {formatDuration(rec.duration_seconds)}</span>
-                    {rec.size_bytes && <span>💾 {formatSize(rec.size_bytes)}</span>}
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
-                  {rec.download_url ? (
-                    <div className="flex gap-2">
-                      <Button asChild size="sm" variant="outline" className="flex-1">
-                        <a href={rec.download_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-3.5 h-3.5 mr-1" />
-                          Ver
-                        </a>
-                      </Button>
-                      <Button asChild size="sm" className="flex-1">
-                        <a href={rec.download_url} download>
-                          <Download className="w-3.5 h-3.5 mr-1" />
-                          Baixar
-                        </a>
-                      </Button>
-                      {isDev && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(rec)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+            {filtered.map(
+              recording => {
+
+                const active =
+                  [
+                    "starting",
+                    "recording",
+                    "processing"
+                  ].includes(
+                    recording.status
+                  );
+
+                const failed =
+                  [
+                    "failed",
+                    "aborted",
+                    "limit_reached"
+                  ].includes(
+                    recording.status
+                  );
+
+                return (
+                  <Card
+                    key={
+                      recording.id
+                    }
+                    className="relative overflow-hidden"
+                  >
+
+        <DeveloperRecordingCardDelete
+          recording={recording}
+        />
+
+
+                    <div className="aspect-video bg-slate-950 flex items-center justify-center relative">
+
+                      <Video className="w-12 h-12 text-white/30" />
+
+                      {active && (
+                        <div className="absolute top-3 left-3">
+
+                          <Badge variant="destructive" className="gap-1.5">
+
+                            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+
+                            {statusLabel(
+                              recording.status
+                            )}
+
+                          </Badge>
+
+                        </div>
                       )}
+
+                      {!active && (
+                        <div className="absolute top-3 left-3">
+
+                          <Badge
+                            variant={
+                              failed
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {statusLabel(
+                              recording.status
+                            )}
+                          </Badge>
+
+                        </div>
+                      )}
+
                     </div>
-                  ) : (
-                    <p className="text-xs text-destructive">Arquivo indisponível</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+
+
+                    <CardContent className="p-4 space-y-4">
+
+                      <div>
+
+                        <h3 className="font-semibold truncate">
+
+                          {recording.meeting_title}
+
+                        </h3>
+
+                        <p className="text-xs text-muted-foreground mt-1">
+
+                          {format(
+                            new Date(
+                              recording.meeting_date
+                            ),
+                            "dd/MM/yyyy 'às' HH:mm",
+                            {
+                              locale:
+                                ptBR
+                            }
+                          )}
+
+                        </p>
+
+                      </div>
+
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+
+                        <span>
+                          ⏱ {duration(
+                            recording.duration_seconds
+                          )}
+                        </span>
+
+                        <span>
+                          💾 {fileSize(
+                            recording.size_bytes
+                          )}
+                        </span>
+
+                      </div>
+
+
+                      {recording.error_message && (
+                        <p className="text-xs text-destructive">
+                          {recording.error_message}
+                        </p>
+                      )}
+
+
+                      {recording.status ===
+                        "completed"
+                        &&
+                        recording.play_url && (
+
+                        <div className="flex gap-2">
+
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                          >
+
+                            <a
+                              href={
+                                recording.play_url
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+
+                              <Eye className="w-4 h-4 mr-1" />
+
+                              Assistir
+
+                            </a>
+
+                          </Button>
+
+
+                          <Button
+                            asChild
+                            size="sm"
+                            className="flex-1"
+                          >
+
+                            <a
+                              href={
+                                recording.download_url
+                                ||
+                                recording.play_url
+                              }
+                            >
+
+                              <Download className="w-4 h-4 mr-1" />
+
+                              Baixar
+
+                            </a>
+
+                          </Button>
+
+
+                          {canDelete && (
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() =>
+                                deleteRecording(
+                                  recording
+                                )
+                              }
+                            >
+
+                              <Trash2 className="w-4 h-4" />
+
+                            </Button>
+
+                          )}
+
+                        </div>
+                      )}
+
+
+                      {active && (
+
+                        <p className="text-xs text-muted-foreground">
+
+                          O arquivo ficará disponível automaticamente quando a reunião terminar.
+
+                        </p>
+
+                      )}
+
+                    </CardContent>
+
+                  </Card>
+                );
+              }
+            )}
+
           </div>
         )}
+
       </div>
+
     </DashboardLayout>
   );
 }

@@ -1,0 +1,9 @@
+{
+  "date": "2026-10-13T20:15:13.823Z",
+  "authorized_email": "marketing@digitaletextil.com.br",
+  "marketing_api": 200,
+  "other_admin_api": 403,
+  "other_admin_writes": 403,
+  "menu_visible_only_to_marketing": true,
+  "direct_urls_blocked": true
+}

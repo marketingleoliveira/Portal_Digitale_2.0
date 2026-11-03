@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 

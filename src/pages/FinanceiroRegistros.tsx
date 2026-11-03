@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +51,101 @@ interface TravelExpense {
 const formatBRL = (n: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0);
 
+/*
+ * FINANCEIRO_REGISTROS_LOCAL_NORMALIZATION
+ *
+ * O backend MySQL local devolve:
+ * - campos DATE podendo chegar como ISO;
+ * - items armazenado em LONGTEXT JSON.
+ *
+ * A antiga implementação do Supabase recebia
+ * esses valores já normalizados.
+ */
+const normalizeTravelDate = (
+  value: unknown
+): string => {
+
+  if (!value) {
+    return '';
+  }
+
+  const raw =
+    String(value).trim();
+
+  const direct =
+    raw.match(
+      /^(\d{4}-\d{2}-\d{2})/
+    );
+
+  if (direct) {
+    return direct[1];
+  }
+
+  const parsed =
+    new Date(raw);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return '';
+  }
+
+  return format(
+    parsed,
+    'yyyy-MM-dd'
+  );
+};
+
+
+const normalizeExpenseItems = (
+  value: unknown
+): ExpenseItem[] => {
+
+  let parsed: unknown =
+    value;
+
+  if (
+    typeof parsed === 'string'
+  ) {
+
+    const raw =
+      parsed.trim();
+
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      parsed =
+        JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  if (
+    !Array.isArray(parsed)
+  ) {
+    return [];
+  }
+
+  return parsed.map(
+    (item: any) => ({
+      description:
+        String(
+          item?.description ?? ''
+        ),
+
+      value:
+        String(
+          item?.value ?? ''
+        ),
+    })
+  );
+};
+
 const FinanceiroRegistros: React.FC = () => {
   const [expenses, setExpenses] = useState<TravelExpense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,9 +193,40 @@ const FinanceiroRegistros: React.FC = () => {
 
       setExpenses(list.map(e => ({
         ...e,
-        items: Array.isArray(e.items) ? e.items : [],
-        user_name: profileMap.get(e.user_id)?.full_name || 'Usuário',
-        user_email: profileMap.get(e.user_id)?.email || '',
+
+        amount:
+          Number(
+            e.amount || 0
+          ),
+
+        start_date:
+          normalizeTravelDate(
+            e.start_date
+          ),
+
+        end_date:
+          e.end_date
+            ? normalizeTravelDate(
+                e.end_date
+              )
+            : null,
+
+        items:
+          normalizeExpenseItems(
+            e.items
+          ),
+
+        user_name:
+          profileMap.get(
+            e.user_id
+          )?.full_name
+          || 'Usuário',
+
+        user_email:
+          profileMap.get(
+            e.user_id
+          )?.email
+          || '',
       })));
     } catch (e: any) {
       toast.error('Erro ao carregar registros: ' + e.message);

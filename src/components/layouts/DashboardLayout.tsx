@@ -70,6 +70,7 @@ import { AppRole, ROLE_LABELS, isDevLevel } from "@/types/auth";
 import { UsersRound } from "lucide-react";
 
 import { navItems, NavItem } from "@/config/navigation";
+import { AgendorNewLeadBadge } from "@/components/agendor/AgendorNewLeadBadge";
 import { useErpSettings } from "@/hooks/useErpSettings";
 
 
@@ -105,6 +106,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   // Filter nav items - if role not available, show minimal nav
   const effectiveRoleForNav = isDevLevel(user?.role) ? 'dev' : user?.role;
   const isVisible = (item: NavItem) => {
+    if (item.allowedEmails && !item.allowedEmails.includes(user?.email?.trim().toLowerCase() || "")) return false;
     // Dev-only settings area is restricted to the actual "dev" role.
     if (item.href === "/configuracoes") return user?.role === "dev";
     return !isMenuHidden(item.href, user?.role);
@@ -247,6 +249,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                         )}
                         {isUpdatesItem && hasNewUpdates && !isActive && (
                           <span className="absolute right-3 w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                        )}
+                        {entry.href === "/agendor" && (
+                          <AgendorNewLeadBadge />
                         )}
                         {isDashboardItem && unreadCount.total > 0 && !isActive && (
                           <span className="ml-auto px-2 py-0.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full animate-pulse shadow-[0_0_8px_hsl(var(--destructive))]">

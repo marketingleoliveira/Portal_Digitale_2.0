@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido').max(255, 'Email muito longo'),

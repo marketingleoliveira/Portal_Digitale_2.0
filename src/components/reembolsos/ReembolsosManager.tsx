@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,6 +91,18 @@ interface Props {
   isAdminView?: boolean;
   userName?: string;
 }
+
+
+const safeReimbursementDate = (...args: Parameters<typeof format>) => {
+  try {
+    return format(...args);
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return "—";
+    }
+    throw error;
+  }
+};
 
 const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false, isAdminView, userName }) => {
   const [reports, setReports] = useState<ExpenseReport[]>([]);
@@ -186,7 +198,12 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    if (error) { toast.error('Erro ao carregar reembolsos'); setLoading(false); return; }
+    if (error) {
+      console.error("[REEMBOLSOS] Erro na consulta:", error);
+      toast.error("Erro ao carregar reembolsos: " + (error.message || "Falha na API"));
+      setLoading(false);
+      return;
+    }
     setReports(reps || []);
     if (reps && reps.length > 0) {
       const { data: its } = await supabase
@@ -418,7 +435,7 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
     const a = document.createElement('a');
     const safeTitle = rep.title.replace(/[^\w\-]+/g, '_').slice(0, 40);
     a.href = url;
-    a.download = `reembolso-${safeTitle}-${format(new Date(rep.created_at), 'yyyyMMdd')}.csv`;
+    a.download = `reembolso-${safeTitle}-${safeReimbursementDate(new Date(rep.created_at), 'yyyyMMdd')}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -481,7 +498,7 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(90);
-    doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, pageWidth / 2, titleY + 6, { align: 'center' });
+    doc.text(`Gerado em ${safeReimbursementDate(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, pageWidth / 2, titleY + 6, { align: 'center' });
     doc.setTextColor(0);
 
     // Collaborator box
@@ -546,8 +563,8 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
       const meta: string[] = [];
       if (rep.trip_destination) meta.push(`Destino: ${rep.trip_destination}`);
       if (rep.trip_start_date) {
-        const s = format(new Date(rep.trip_start_date + 'T00:00:00'), 'dd/MM/yyyy');
-        const e = rep.trip_end_date ? format(new Date(rep.trip_end_date + 'T00:00:00'), 'dd/MM/yyyy') : null;
+        const s = safeReimbursementDate(new Date(rep.trip_start_date + 'T00:00:00'), 'dd/MM/yyyy');
+        const e = rep.trip_end_date ? safeReimbursementDate(new Date(rep.trip_end_date + 'T00:00:00'), 'dd/MM/yyyy') : null;
         meta.push(`Período: ${s}${e && e !== s ? ` → ${e}` : ''}`);
       }
       if (meta.length) { doc.text(meta.join('   |   '), margin, y); y += 5; }
@@ -556,7 +573,7 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
         startY: y,
         head: [['Data', 'Categoria', 'Descrição', 'Valor (R$)']],
         body: its.map(it => [
-          it.expense_date ? format(new Date(it.expense_date + 'T00:00:00'), 'dd/MM/yyyy') : '-',
+          it.expense_date ? safeReimbursementDate(new Date(it.expense_date + 'T00:00:00'), 'dd/MM/yyyy') : '-',
           CATEGORY_META[it.category]?.label || it.category,
           it.description || '-',
           Number(it.amount || 0).toFixed(2).replace('.', ','),
@@ -604,7 +621,7 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
     });
 
     const safeName = (userName || 'colaborador').replace(/[^\w\-]+/g, '_').slice(0, 40);
-    doc.save(`reembolsos-${safeName}-${format(new Date(), 'yyyyMMdd')}.pdf`);
+    doc.save(`reembolsos-${safeName}-${safeReimbursementDate(new Date(), 'yyyyMMdd')}.pdf`);
     toast.success('Relatório PDF gerado');
   };
 
@@ -730,9 +747,9 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
                         </div>
                         <CardDescription className="mt-1">
                           {rep.trip_destination && <span>{rep.trip_destination} · </span>}
-                          {rep.trip_start_date && format(new Date(rep.trip_start_date + 'T00:00:00'), 'dd/MM/yyyy')}
+                          {rep.trip_start_date && safeReimbursementDate(new Date(rep.trip_start_date + 'T00:00:00'), 'dd/MM/yyyy')}
                           {rep.trip_end_date && rep.trip_end_date !== rep.trip_start_date &&
-                            ` → ${format(new Date(rep.trip_end_date + 'T00:00:00'), 'dd/MM/yyyy')}`}
+                            ` → ${safeReimbursementDate(new Date(rep.trip_end_date + 'T00:00:00'), 'dd/MM/yyyy')}`}
                         </CardDescription>
                       </div>
                     </div>
@@ -807,7 +824,7 @@ const ReembolsosManager: React.FC<Props> = ({ userId, canEdit, canDelete = false
                                 {it.description && <p className="text-xs text-muted-foreground truncate">{it.description}</p>}
                                 {it.expense_date && (
                                   <p className="text-[11px] text-muted-foreground">
-                                    {format(new Date(it.expense_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                                    {safeReimbursementDate(new Date(it.expense_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                                   </p>
                                 )}
                               </div>

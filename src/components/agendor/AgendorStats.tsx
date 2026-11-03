@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Briefcase, TrendingUp, Trophy, XCircle } from "lucide-react";
+import { Briefcase, TrendingUp, Trophy, XCircle, Globe, Sparkles } from "lucide-react";
 import { formatBRL, type CrmDeal } from "@/hooks/useAgendor";
 
 interface AgendorStatsProps {
@@ -15,7 +15,34 @@ export function AgendorStats({ deals }: AgendorStatsProps) {
   const closed = won.length + lost.length;
   const conversion = closed > 0 ? Math.round((won.length / closed) * 100) : 0;
 
+  const normalizeSource = (source: CrmDeal["source"]) =>
+    String(source ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase();
+
+  const siteLeads = deals.filter(
+    (deal) => normalizeSource(deal.source) === "SITE"
+  );
+  const aiLeads = deals.filter(
+    (deal) => ["IA", "IA PROSPECCAO"].includes(normalizeSource(deal.source))
+  );
+
   const items = [
+    {
+      label: "Leads do site",
+      value: String(siteLeads.length),
+      hint: `${siteLeads.filter((d) => d.status === "aberto").length} em aberto · todos os status`,
+      icon: Globe,
+    },
+    {
+      label: "Leads da IA",
+      value: String(aiLeads.length),
+      hint: `${aiLeads.filter((d) => d.status === "aberto").length} em aberto · todos os status`,
+      icon: Sparkles,
+    },
     { label: "Negócios abertos", value: String(open.length), hint: formatBRL(openValue), icon: Briefcase },
     { label: "Ganhos", value: String(won.length), hint: formatBRL(wonValue), icon: Trophy },
     { label: "Perdidos", value: String(lost.length), hint: "Encerrados sem venda", icon: XCircle },
@@ -23,7 +50,7 @@ export function AgendorStats({ deals }: AgendorStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
       {items.map(({ label, value, hint, icon: Icon }) => (
         <Card key={label} className="p-4 flex items-start justify-between gap-3">
           <div className="min-w-0">

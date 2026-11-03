@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -469,7 +469,7 @@ const FinanceiroReembolsos: React.FC = () => {
       drawKV('Destino:', report.trip_destination || '—');
       const period = `${report.trip_start_date ? format(new Date(report.trip_start_date), 'dd/MM/yyyy', { locale: ptBR }) : '—'} até ${report.trip_end_date ? format(new Date(report.trip_end_date), 'dd/MM/yyyy', { locale: ptBR }) : '—'}`;
       drawKV('Período:', period);
-      drawKV('Status:', STATUS_META[report.status].label);
+      drawKV('Status:', (STATUS_META[report.status]?.label ?? String(report.status || 'Não informado')));
       drawKV('Criado em:', format(new Date(report.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }));
 
       sectionTitle('Resumo Financeiro');
@@ -756,7 +756,11 @@ const FinanceiroReembolsos: React.FC = () => {
                   <TableBody>
                     {filtered.map(r => {
                       const diff = (r.total_spent || 0) - Number(r.company_advance || 0);
-                      const meta = STATUS_META[r.status];
+                      const meta = STATUS_META[r.status] ?? {
+                        label: r.status ? String(r.status) : 'Status não informado',
+                        className: 'bg-muted text-muted-foreground',
+                        icon: Clock,
+                      };
                       const Icon = meta.icon;
                       return (
                         <TableRow key={r.id} className="cursor-pointer" onClick={() => setDetailReport(r)}>

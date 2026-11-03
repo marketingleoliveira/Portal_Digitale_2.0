@@ -1,12 +1,15 @@
+import { ReturnsPanel } from "@/components/agendor/ReturnsPanel";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search, RefreshCw } from "lucide-react";
 import { AgendorStats } from "@/components/agendor/AgendorStats";
 import { AgendorKanban } from "@/components/agendor/AgendorKanban";
+import { AgendorLeadGuide } from "@/components/agendor/AgendorLeadGuide";
 import { DealFormDialog } from "@/components/agendor/DealFormDialog";
 import { DealDetailSheet } from "@/components/agendor/DealDetailSheet";
 import { OrganizationsPanel } from "@/components/agendor/OrganizationsPanel";
@@ -22,6 +25,11 @@ import {
 
 const Agendor = () => {
   useAgendorRealtime();
+
+  const {
+    session,
+    realRole,
+  } = useAuth();
   const { data: pipelines = [], isLoading: loadingPipelines } = usePipelines();
   const [pipelineId, setPipelineId] = useState<string | null>(null);
 
@@ -32,7 +40,7 @@ const Agendor = () => {
   }, [pipelines, pipelineId]);
 
   const { data: stages = [] } = useStages(pipelineId);
-  const { data: deals = [], isLoading: loadingDeals } = useDeals(pipelineId);
+  const { data: deals = [], isLoading: loadingDeals, isFetching, error: dealsError, refetch, dataUpdatedAt } = useDeals(pipelineId);
 
   const [search, setSearch] = useState("");
   const [showDealForm, setShowDealForm] = useState(false);
@@ -49,6 +57,54 @@ const Agendor = () => {
     );
   }, [deals, search]);
 
+  const markDealRead = async (
+    dealId: string
+  ) => {
+    if (
+      realRole !== "sdr"
+    ) {
+      return;
+    }
+
+    const token =
+      (session as any)
+        ?.access_token
+      ||
+      (session as any)
+        ?.accessToken;
+
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response =
+        await fetch(
+          `/api/agendor-unread/${dealId}/read`,
+          {
+            method: "POST",
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
+
+      if (response.ok) {
+        window.dispatchEvent(
+          new Event(
+            "agendor-unread-changed"
+          )
+        );
+      }
+
+    } catch {
+      // A leitura do card continua
+      // funcionando mesmo se a API falhar.
+    }
+  };
+
+
   // Mantém o negócio aberto sincronizado com o realtime.
   const currentDeal = selectedDeal
     ? deals.find((d) => d.id === selectedDeal.id) ?? selectedDeal
@@ -64,12 +120,24 @@ const Agendor = () => {
               CRM completo: organizações, contatos, negócios em funil e atividades.
             </p>
           </div>
-          <Button className="gap-2" onClick={() => setShowDealForm(true)} disabled={!pipelineId}>
-            <Plus className="w-4 h-4" />
-            Novo negócio
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" disabled={isFetching} onClick={() => void refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />{isFetching ? 'Atualizando…' : 'Atualizar leads'}
+            </Button>
+
+            <Button
+              className="gap-2"
+              onClick={() => setShowDealForm(true)}
+              disabled={!pipelineId}
+            >
+              <Plus className="w-4 h-4" />
+              Novo negócio
+            </Button>
+          </div>
         </div>
 
+        {dealsError && <p role="alert" className="text-destructive">Não foi possível atualizar os leads: {dealsError.message}. Tente Atualizar leads.</p>}
+        <p className="text-xs text-muted-foreground">Atualização automática a cada 30 segundos.{dataUpdatedAt ? ` Última consulta: ${new Date(dataUpdatedAt).toLocaleTimeString('pt-BR')}.` : ''} O total de leads da IA já inclui os lotes externos atribuídos a você neste funil.</p>
         <AgendorStats deals={deals} />
 
         <Tabs defaultValue="funil" className="space-y-4">
@@ -78,6 +146,7 @@ const Agendor = () => {
             <TabsTrigger value="organizacoes">Organizações</TabsTrigger>
             <TabsTrigger value="contatos">Contatos</TabsTrigger>
             <TabsTrigger value="atividades">Atividades</TabsTrigger>
+            <TabsTrigger value="retornos">Retornos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="funil" className="space-y-4">
@@ -115,6 +184,7 @@ const Agendor = () => {
                 stages={stages}
                 onSelectDeal={(deal) => {
                   setSelectedDeal(deal);
+                  void markDealRead(deal.id);
                   setShowDetail(true);
                 }}
               />
@@ -131,6 +201,9 @@ const Agendor = () => {
 
           <TabsContent value="atividades">
             <ActivitiesPanel />
+          </TabsContent>
+          <TabsContent value="retornos">
+            <ReturnsPanel />
           </TabsContent>
         </Tabs>
       </div>

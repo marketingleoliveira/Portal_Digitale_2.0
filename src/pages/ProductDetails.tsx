@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/local/client';
 import { Product, Category, AppRole, hasFullAccess } from '@/types/auth';
 import RoleBadge from '@/components/RoleBadge';
 import { useAuth } from '@/contexts/AuthContext';

@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-13T19:54:06.301Z",
+  "target_state": "SP",
+  "authenticated_api_status": 200,
+  "unauthenticated_api_status": 401,
+  "public_build_matches": true,
+  "browser_heading": "Prospecção São Paulo",
+  "page_errors": [],
+  "tests_passed": 21,
+  "crm_ai_total": 123,
+  "crm_external_available": "30"
+}

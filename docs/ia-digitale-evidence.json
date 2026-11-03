@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-13T20:20:23.645Z",
+  "live_api": true,
+  "unauthenticated_status": 401,
+  "sdr_settings_status": 403,
+  "public_build_matches": true,
+  "browser_menu": true,
+  "settings_form": true,
+  "preview_formats": [
+    "csv",
+    "xlsx",
+    "xls"
+  ],
+  "invalid_cnpj_rejected": true,
+  "preview_calls": 4,
+  "simulated_imports": 1,
+  "blocked_other_mutations": 10,
+  "actual_settings_preserved": true,
+  "actual_clients_preserved": true,
+  "page_errors": [],
+  "tests_passed": 27
+}

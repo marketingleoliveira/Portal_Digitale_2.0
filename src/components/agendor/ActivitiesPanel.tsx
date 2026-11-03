@@ -27,12 +27,19 @@ export function ActivitiesPanel({ dealId, organizationId, compact }: ActivitiesP
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CrmActivity | null>(null);
 
-  const { pending, done } = useMemo(() => {
-    const sorted = [...activities];
-    return {
-      pending: sorted.filter((a) => !a.completed_at),
-      done: sorted.filter((a) => !!a.completed_at),
-    };
+
+  // DIGITALE_ACTIVITY_DATE_DESC_V1
+  const sortedActivities = useMemo(() => {
+    const timestamp = (activity: CrmActivity) =>
+      Math.max(
+        ...[activity.updated_at, activity.completed_at, activity.created_at]
+          .map((value) => value ? Date.parse(value) : 0)
+          .map((value) => Number.isFinite(value) ? value : 0)
+      );
+    return [...activities].sort(
+      (a, b) => timestamp(b) - timestamp(a)
+        || b.id.localeCompare(a.id)
+    );
   }, [activities]);
 
   const renderItem = (activity: CrmActivity) => {
@@ -63,6 +70,16 @@ export function ActivitiesPanel({ dealId, organizationId, compact }: ActivitiesP
           {activity.description && (
             <p className="text-xs text-muted-foreground mt-0.5">{activity.description}</p>
           )}
+
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Atualização: {new Date(
+              Math.max(
+                ...[activity.updated_at, activity.completed_at, activity.created_at]
+                  .map((value) => value ? Date.parse(value) : 0)
+                  .map((value) => Number.isFinite(value) ? value : 0)
+              )
+            ).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+          </p>
           {activity.due_at && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {new Date(activity.due_at).toLocaleString("pt-BR")}
@@ -107,13 +124,7 @@ export function ActivitiesPanel({ dealId, organizationId, compact }: ActivitiesP
         {!isLoading && activities.length === 0 && (
           <p className="text-sm text-muted-foreground">Nenhuma atividade registrada.</p>
         )}
-        {pending.map(renderItem)}
-        {done.length > 0 && (
-          <div className="mt-4 pt-3 border-t">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Concluídas</p>
-            {done.map(renderItem)}
-          </div>
-        )}
+        {sortedActivities.map(renderItem)}
       </Card>
 
       <ActivityFormDialog
