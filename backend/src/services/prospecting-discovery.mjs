@@ -1,101 +1,217 @@
 import {DEFAULT_SETTINGS,STATES} from './digitale-ai-settings.mjs';
 import crypto from 'node:crypto';
+import {getPublic} from './prospecting-verification.mjs';
+import {blockedProspectingSource,apparelSearchHint,officialManufacturerPage} from './prospecting-source-quality.mjs';
 import {domainOf,excludedDomain} from './prospecting-auto-verification.mjs';
 
-const segments=['moda fitness','moda praia','moda esportiva','moda íntima','vestuário','lingerie','uniformes'];
-const terms=['confecção','fabricante de roupas','fábrica de roupas','produção própria','private label','atacado de tecidos'];
-const spRegions=['São Paulo SP','Americana SP','Limeira SP','Campinas SP','Santa Bárbara d’Oeste SP','Guarulhos SP','São Bernardo do Campo SP','Santo André SP','Sorocaba SP','Ribeirão Preto SP','São José do Rio Preto SP','Franca SP','Ibitinga SP'];
-export const SEARCH_SPAN=segments.length*terms.length*spRegions.length*3;
+const commercialTerms=['fabricante de','confecção de','fábrica de','produção própria de'];
+export const SEARCH_SPAN=DEFAULT_SETTINGS.states.length*DEFAULT_SETTINGS.segments.length*commercialTerms.length*3;
 export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
-  // DIGITALE_SEARCH_EXPANDED_V2
-  if (!Number.isSafeInteger(cursor) || cursor < 0)
-    throw Error('invalid_search_cursor');
+  if(!Number.isSafeInteger(cursor)||cursor<0)throw Error('invalid_search_cursor');
+  const states=[...new Set(settings.states)].sort();
+  const segments=settings.segments.map(s=>s.trim()).filter(Boolean);
+  if(!states.length||!segments.length)throw Error('search_regions_empty');
+  // Visit every selected UF before rotating segment/production term/page.
+  const uf=states[cursor%states.length],variant=Math.floor(cursor/states.length);
+  const segment=segments[variant%segments.length];
+  const term=commercialTerms[Math.floor(variant/segments.length)%commercialTerms.length];
+  const page=1+Math.floor(variant/(segments.length*commercialTerms.length))%3;
+  return {q:`${term} ${segment} ${STATES[uf]} ${uf} site oficial`,pageno:page,engines:'yahoo'};
+}
 
-  const products = [
-    'leggings', 'moda fitness', 'moda praia',
-    'roupas femininas', 'uniformes profissionais',
-    'roupas esportivas', 'bermudas fitness',
-    'lingerie', 'moda íntima', 'camisetas',
-    'roupas de academia', 'roupas para ciclismo',
-    'biquínis', 'maiôs', 'tops fitness',
-    'moda plus size', 'roupas infantis',
-    'moda casual', 'roupas masculinas',
-    'roupas para corrida', 'private label'
-  ];
+// DIGITALE_REGISTRY_DIRECTORY_GUARD_V12
+const registryDirectoriesV12 = [
+  'cnpjonline.com',
+  'consultacnpj.com',
+  'consultacnpj.org',
+  'consultacnpjfacil.com.br',
+  'cnpjob.com.br',
+  'radardocnpj.com.br',
+  'procuracnpj.com.br',
+  'brasilcnpjs.com.br',
+  'brasilcnpj.net',
+  'achacnpj.com',
+  'cnpj.info',
+  'cnpja.com',
+  'cnpj.biz',
+  'hagah.com.br',
+  'apontador.com.br'
+];
 
-  const commercialTerms = [
-    'fabricante de',
-    'confecção de',
-    'fábrica de',
-    'indústria de',
-    'produção de',
-    'atacado de',
-    'fornecedor de',
-    'facção de'
-  ];
+function blockedRegistryDirectoryV12(value) {
+  let host;
 
-  const spCities = [
-    'São Paulo', 'Americana', 'Limeira', 'Campinas',
-    'Santa Bárbara do Oeste', 'Guarulhos',
-    'São Bernardo do Campo', 'Santo André',
-    'Sorocaba', 'Ribeirão Preto',
-    'São José do Rio Preto', 'Franca', 'Ibitinga',
-    'Osasco', 'Barueri', 'Jundiaí', 'Indaiatuba',
-    'Piracicaba', 'Hortolândia', 'Sumaré',
-    'Nova Odessa', 'Artur Nogueira', 'Valinhos',
-    'Vinhedo', 'Bragança Paulista', 'Atibaia',
-    'Mogi das Cruzes', 'Suzano', 'Diadema',
-    'Mauá', 'São Caetano do Sul', 'Bauru',
-    'Marília', 'Araraquara', 'Jaú', 'Botucatu',
-    'Presidente Prudente', 'Araçatuba',
-    'São Carlos', 'Taubaté', 'Jacareí',
-    'São José dos Campos', 'Itapetininga',
-    'Itu', 'Salto', 'Cotia', 'Embu das Artes',
-    'Carapicuíba', 'Itapevi', 'Louveira'
-  ];
-
-  const regions = [...new Set(
-    (settings.states || []).flatMap(uf =>
-      uf === 'SP'
-        ? spCities.map(city => city + ' SP')
-        : STATES[uf] ? [STATES[uf] + ' ' + uf] : []
-    )
-  )];
-
-  if (!regions.length) throw Error('search_regions_empty');
-
-  const segments = (settings.segments || [])
-    .map(value => String(value).trim())
-    .filter(Boolean);
-
-  const subjects = [...new Set([...products,...segments])];
-
-  const queries = [];
-  for (const term of commercialTerms) {
-    for (const subject of subjects) {
-      queries.push(term + ' ' + subject);
-    }
+  try {
+    host = new URL(value).hostname;
+  } catch {
+    host = String(value || '');
   }
 
-  const searchIndex = Math.floor(cursor / 3);
-  const queryIndex = searchIndex % queries.length;
-  const regionIndex = Math.floor(searchIndex / queries.length)
-    % regions.length;
+  host = host.toLowerCase().replace(/^www\./, '').split(':')[0];
 
-  return {
-    q: queries[queryIndex] + ' ' + regions[regionIndex],
-    pageno: cursor % 3 === 2 ? 2 : 1,
-    engines: cursor % 3 === 1 ? 'bing' : 'duckduckgo'
-  };
+  return registryDirectoriesV12.some(blocked =>
+    host === blocked || host.endsWith('.' + blocked)
+  );
 }
 
 export function discoveryResult(result) {
+  if(blockedProspectingSource(result?.url)||!apparelSearchHint(result?.title||'',result?.content||''))return null;
+  if (blockedRegistryDirectoryV12(result?.url)) {
+    return null;
+  }
+
+
+  // DIGITALE_DISCOVERY_FILTER_V6
+  // Bloqueia guias e diretorios, preservando sites de fabricantes.
+  const sourceUrl = String(result?.url || '');
+  const sourceTitle = String(result?.title || '');
+
+  let source;
+  try {
+    source = new URL(sourceUrl);
+  } catch {
+    return null;
+  }
+
+  const hostV6 = source.hostname.toLowerCase()
+    .replace(/^www\\./, '');
+
+  const pathV6 = source.pathname.toLowerCase();
+
+  const directoryHostsV6 = [
+    'americanamoda.com.br',
+    'americana.net.br',
+    'encontraamericana.com.br',
+    'guiadasroupas.com',
+    'procuracnpj.com.br'
+  ];
+
+  if (directoryHostsV6.some(h =>
+    hostV6 === h || hostV6.endsWith('.' + h)
+  )) return null;
+
+  const directoryTitleV6 =
+    /^(?:encontre|lista de|listagem de|guia comercial|guia de empresas|f[aá]bricas de .{2,70}:?\s*\d+ op[cç][oõ]es|\\d+ f[aá]bricas e fornecedores)/i;
+
+  const directoryPathV6 =
+    /\/(?:resultadobusca\.php|guia\/categorias\/|moda-fitness-em-|fabricas-de-biquinis-em-)/i;
+
+  if (directoryTitleV6.test(sourceTitle) ||
+      directoryPathV6.test(pathV6)) {
+    return null;
+  }
+
+  // DIGITALE_DIRECTORY_FILTER_V1
+  // Impede que diretorios sejam tratados como sites de fabricantes.
+  let discoveryHost;
+
+  try {
+    const address = new URL(result?.url || '');
+    discoveryHost = address.hostname.toLowerCase()
+      .replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+
+  // DIGITALE_DISCOVERY_FILTER_V5
+  // Remove diretórios, consultas cadastrais e fontes genéricas.
+  // Não altera os critérios de validação de empresas.
+
+  const blockedHostPattern =
+    /(?:^|[.-])(?:cnpj|consultaempresa|consultacnpj|buscacnpj|procuracnpj|mei|contabil|cadastroempresa|guiaempresas|listaempresas|acheiempresa|encontraempresas|empresasbrasil|receitafederal)(?:[.-]|$)/i;
+
+  const blockedHostWords = [
+    'procuracnpj',
+    'cnpjaberto',
+    'cnpjtotal',
+    'cnpjconsulta',
+    'monitorcnpj',
+    'encontradiadema',
+    'encontracotia',
+    'encontrataubate',
+    'encontraitapevi',
+    'maismei',
+    'acheiempresa',
+    'consultacnpj',
+    'buscacnpj',
+    'guiacomercial',
+    'catalogodeempresas'
+  ];
+
+  if (
+    blockedHostPattern.test(discoveryHost) ||
+    blockedHostWords.some(word =>
+      discoveryHost.includes(word)
+    )
+  ) {
+    return null;
+  }
+
+  // DIGITALE_DISCOVERY_DIRECTORY_V7
+  const directoryHostsV7 = [
+    'encontrasantoandre.com.br',
+    'encontraamericana.com.br',
+    'americana.net.br',
+    'americanamoda.com.br',
+    'guiadasroupas.com',
+    'procuracnpj.com.br',
+    'buscadorncm.com.br'
+  ];
+
+  if (directoryHostsV7.some(host =>
+    discoveryHost === host ||
+    discoveryHost.endsWith('.' + host)
+  )) return null;
+
+
+  // DIGITALE_DIRECTORY_FILTER_V8
+  // Descarta agregadores, preservando sites proprios de empresas.
+  const directoryHostsV8 = [
+    'telelistas.com',
+    'cylex.com.br',
+    'brasillocais.com',
+    'listamais.com.br',
+    'apontador.com.br',
+    'modafeminina.com.br',
+    'guia.santoandre.br',
+    'brasilcnpjs.com.br'
+  ];
+
+  if (directoryHostsV8.some(host =>
+    discoveryHost === host ||
+    discoveryHost.endsWith('.' + host)
+  )) {
+    return null;
+  }
+
+  const blockedHosts = [
+    'cnpjob.com.br',
+    'encontraitapevi.com.br',
+    'encontracotia.com',
+    'guiacotia.com',
+    'guiataubate.com.br',
+    'itapevi.net.br',
+    'diadema.net.br',
+    'prudenteempresas.com.br',
+    'contabilivre.com.br',
+    'tudoaquitaubate.com.br',
+    'mylinq.com.br'
+  ];
+
+  if (blockedHosts.some(host =>
+    discoveryHost === host ||
+    discoveryHost.endsWith('.' + host)
+  )) return null;
+
+  // Sites hospedados em plataformas de paginas comerciais
+  // nao sao excluidos automaticamente: alguns sao empresas reais.
+
   // DIGITALE_DISCOVERY_QUALITY_V1
   const title = String(result?.title || '');
   const content = String(result?.content || '');
   const text = title + ' ' + content;
 
-  if (!/moda|fitness|vestu[aá]rio|lingerie|biqu[ií]ni|roupa|uniforme|confec[cç]|malharia|t[eê]xtil|fac[cç][aã]o|vestimenta|ind[uú]stria de roupas|fabrica[cç][aã]o de roupas|moda praia|private label/i.test(text)) {
+  if (!/moda|fitness|vestu[aá]rio|lingerie|biqu[ií]ni|roupa|uniforme|confec[cç]|malharia|t[eê]xtil|fac[cç][aã]o|vestimenta|ind[uú]stria de roupas|fabrica[cç][aã]o de roupas|moda praia|private label|beachwear|swimwear/i.test(text)) {
     return null;
   }
 
@@ -152,7 +268,7 @@ export function discoveryResult(result) {
   }
 }
 
-export async function discoverCandidates(db,cursor,{fetchSearch=fetch,settings=DEFAULT_SETTINGS}={}) {
+export async function discoverCandidates(db,cursor,{fetchSearch=fetch,fetchSite=getPublic,settings=DEFAULT_SETTINGS}={}) {
   const plan=searchPlan(cursor,settings),endpoint=new URL('http://127.0.0.1:8888/search');
   endpoint.search=new URLSearchParams({...plan,pageno:String(plan.pageno),format:'json',language:'pt-BR',safesearch:'1'});
   const response=await fetchSearch(endpoint,{signal:AbortSignal.timeout(20000)});
@@ -160,11 +276,29 @@ export async function discoverCandidates(db,cursor,{fetchSearch=fetch,settings=D
   const body=await response.json();
   if(!Array.isArray(body.results))throw Error('discovery_invalid_response');
   const degraded=(body.unresponsive_engines||[]).map(e=>String(e[0]).replace(/[^a-z0-9_]/gi,''));
-  let found=0;
+  if(!body.results.length&&degraded.includes(plan.engines))throw Error('discovery_provider_unavailable');
+  let found=0,checked=0,rejected=0;
+  const seen=new Set();
   for(const result of body.results.slice(0,40)) {
-    const candidate=discoveryResult(result);if(!candidate)continue;
-    const [insert]=await db.execute('INSERT IGNORE INTO prospecting_auto_candidates(id,discovery_url,domain) VALUES(?,?,?)',[crypto.randomUUID(),candidate.url,candidate.domain]);
+    const candidate=discoveryResult(result);if(!candidate||seen.has(candidate.domain))continue;
+    seen.add(candidate.domain);
+    const [existing]=await db.execute('SELECT id FROM prospecting_auto_candidates WHERE domain=? LIMIT 1',[candidate.domain]);
+    if(existing.length)continue;
+    if(checked>=8)break;
+    checked++;
+    let official=null;
+    // Search snippets only nominate a site. Production evidence must be fetched
+    // from that exact host before it enters the candidate queue.
+    for(const url of [...new Set([new URL(candidate.url).origin+'/',candidate.url])]) {
+      try {
+        const page=await fetchSite(url);
+        if(domainOf(page.url)===candidate.domain&&officialManufacturerPage(page)){official=page;break;}
+      }catch{}
+    }
+    if(!official){rejected++;continue;}
+    const evidence={discovery:{query:plan.q,engine:plan.engines,source_url:candidate.url,checked_url:official.url,manufacturer_evidence:true,checked_at:new Date().toISOString()}};
+    const [insert]=await db.execute('INSERT IGNORE INTO prospecting_auto_candidates(id,discovery_url,domain,proof) VALUES(?,?,?,?)',[crypto.randomUUID(),official.url,candidate.domain,JSON.stringify(evidence)]);
     found+=Number(insert.affectedRows||0);
   }
-  return {found,received:body.results.length,degraded,plan};
+  return {found,received:body.results.length,checked,rejected,degraded,plan};
 }

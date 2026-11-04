@@ -20,14 +20,14 @@ async function discover(cursor,runId) {
  if(!settings.enabled)return 0;
  const result=await discoverCandidates(db,cursor,{settings});
  if(result.degraded.length)await db.execute('UPDATE prospecting_auto_runs SET error=? WHERE id=?',[('search_degraded_'+result.degraded.join('_')).slice(0,191),runId]);
- console.log(JSON.stringify({event:'discovery_completed',cursor,page:result.plan.pageno,received:result.received,found:result.found,degraded:result.degraded}));
+ console.log(JSON.stringify({event:'discovery_completed',cursor,page:result.plan.pageno,received:result.received,checked:result.checked,rejected_sources:result.rejected,found:result.found,degraded:result.degraded}));
  await db.execute('UPDATE prospecting_auto_runtime SET heartbeat_at=UTC_TIMESTAMP(6),query_cursor=? WHERE id=1',[cursor+1]);
  return result.found;
 }
 async function cycle() {
   const id=crypto.randomUUID();
   await db.execute('INSERT INTO prospecting_auto_runs(id) VALUES(?)',[id]);
-  let found=0,delivered=0;
+  let found=0,delivered=0,approved=0;
   const [batchRows]=await db.execute("SELECT id,target FROM prospecting_external_batches WHERE status='running' ORDER BY created_at LIMIT 1");
   const externalBatchId=batchRows[0]?.id||null;
   try {
@@ -44,7 +44,7 @@ async function cycle() {
         await db.execute('UPDATE prospecting_auto_runs SET error=? WHERE id=?',[safeReason(e),id]);
       }
     }
-    const [candidates]=await db.execute("SELECT * FROM prospecting_auto_candidates WHERE status IN ('discovered','review') AND (next_attempt_at IS NULL OR next_attempt_at<=UTC_TIMESTAMP(6)) ORDER BY CASE WHEN status='discovered' THEN 0 ELSE 1 END, attempts,discovered_at LIMIT 80");
+    const [candidates]=await db.execute("SELECT c.* FROM prospecting_auto_candidates c WHERE c.status IN ('discovered','review','verified') AND (c.next_attempt_at IS NULL OR c.next_attempt_at<=UTC_TIMESTAMP(6)) AND NOT EXISTS (SELECT 1 FROM prospecting_approved_leads a WHERE a.candidate_id=c.id OR a.cnpj=c.cnpj) AND NOT EXISTS (SELECT 1 FROM prospecting_auto_deliveries d WHERE d.candidate_id=c.id OR d.cnpj=c.cnpj) ORDER BY CASE WHEN c.status='discovered' THEN 0 ELSE 1 END,c.attempts,c.discovered_at LIMIT 80");
     for(let offset=0;offset<candidates.length;offset+=6) {
       const batch=candidates.slice(offset,offset+6);
       const results=await Promise.allSettled(batch.map(async candidate => {
@@ -109,17 +109,17 @@ async function cycle() {
         await db.execute("UPDATE prospecting_auto_candidates SET status='verified',proof=?,verified_at=UTC_TIMESTAMP(6),updated_at=UTC_TIMESTAMP(6) WHERE id=?",[JSON.stringify(proof),candidate.id]);
         await reporter.progress('delivery',{cnpj:proof.cnpj,company:proof.company,phone:proof.phone,uf:proof.registry.uf});
         const result=await deliverVerified(db,proof,candidate.id,{externalBatchId});
-        if(result.created)delivered++;
+        if(result.created){if(result.approved)approved++;else delivered++;}
         else await db.execute('UPDATE prospecting_auto_candidates SET status=?,reason=?,next_attempt_at=?,updated_at=UTC_TIMESTAMP(6) WHERE id=?',[result.duplicate?'duplicate':'verified',result.reason||null,result.duplicate?null:sqlDate(nextRun()),candidate.id]);
-        if(result.created)console.log(JSON.stringify({event:'verified_delivery',deal_id:result.deal_id,owner_id:result.owner_id}));
-        await reporter.result(result.created?'delivered':result.duplicate?'duplicate':'waiting',result.reason||null,{company:proof.company,cnpj:proof.cnpj,owner_id:result.owner_id});
+        if(result.created)console.log(JSON.stringify({event:result.approved?'verified_approval':'verified_delivery',cnpj:proof.cnpj,deal_id:result.deal_id,owner_id:result.owner_id}));
+        await reporter.result(result.created?(result.approved?'approved':'delivered'):result.duplicate?'duplicate':'waiting',result.reason||null,{company:proof.company,cnpj:proof.cnpj,owner_id:result.owner_id});
       }catch(e) {
         const reason=safeReason(e),rejected=(
           (reason==='website_cnpj_inconclusive' && Number(candidate.attempts)>=2) ||
           (reason==='robots_disallow' && Number(candidate.attempts)>=2) ||
           (reason==='fonte_http_404' && Number(candidate.attempts)>=4) ||
           (reason==='business_phone_missing' && Number(candidate.attempts)>=2)
-        )||['excluded_or_own_domain','not_apparel_manufacturer','outside_textile_buyer_profile','registry_inactive_or_mismatch','outside_target_state','outside_profile_history'].includes(reason);
+        )||['excluded_or_own_domain','not_apparel_manufacturer','outside_textile_buyer_profile','registry_inactive_or_mismatch','outside_target_state','outside_profile_history','mei_excluded'].includes(reason);
         await db.execute('UPDATE prospecting_auto_candidates SET status=?,reason=?,next_attempt_at=?,updated_at=UTC_TIMESTAMP(6) WHERE id=?',[['already_in_crm','customer_base'].includes(reason)?'duplicate':rejected?'rejected':'review',reason,rejected?null:sqlDate(new Date(Date.now()+Math.min(86400000,3600000*2**Math.min(candidate.attempts,4)))),candidate.id]);
         await reporter.result(['already_in_crm','customer_base'].includes(reason)?'duplicate':rejected?'rejected':'review',reason);
       }
@@ -137,7 +137,7 @@ async function cycle() {
     }
     const used=await counts(db);
     await db.execute("UPDATE prospecting_auto_runs SET finished_at=UTC_TIMESTAMP(6),found=?,delivered=?,deficit=?,status='completed' WHERE id=?",[found,delivered,Math.max(0,(await getSettings(db)).hourly_target-used.hour),id]);
-    console.log(JSON.stringify({event:'cycle_completed',found,delivered,hour_delivered:used.hour,day_delivered:used.day,deficit:Math.max(0,(await getSettings(db)).hourly_target-used.hour)}));
+    console.log(JSON.stringify({event:'cycle_completed',found,approved,delivered,hour_quota_used:used.hour,day_quota_used:used.day,deficit:Math.max(0,(await getSettings(db)).hourly_target-used.hour)}));
   }catch(e){await db.execute("UPDATE prospecting_auto_runs SET finished_at=UTC_TIMESTAMP(6),status='error',error=? WHERE id=?",[safeReason(e),id]);console.error(JSON.stringify({event:'cycle_error',reason:safeReason(e)}));}
 }
 let lockConnection;

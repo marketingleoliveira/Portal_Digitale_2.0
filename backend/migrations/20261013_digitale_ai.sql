@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS digitale_ai_settings (
  updated_by CHAR(36) NULL,
  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
 ) ENGINE=InnoDB;
-INSERT IGNORE INTO digitale_ai_settings(id,settings) VALUES(1,'{"enabled":true,"hourly_target":16,"daily_target":160,"states":["SP"],"segments":["moda fitness","moda praia","moda esportiva","moda íntima","vestuário","lingerie","uniformes"]}');
+INSERT IGNORE INTO digitale_ai_settings(id,settings) VALUES(1,'{"enabled":true,"inactivity_months":3,"hourly_target":20,"daily_target":160,"states":["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"],"segments":["moda fitness","moda praia","moda esportiva","moda íntima","vestuário","lingerie","uniformes"]}');
 CREATE TABLE IF NOT EXISTS digitale_ai_settings_audit (
  id CHAR(36) PRIMARY KEY,
  before_settings JSON NOT NULL,

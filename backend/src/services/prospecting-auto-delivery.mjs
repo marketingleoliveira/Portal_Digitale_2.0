@@ -1,13 +1,19 @@
 import {isOutsideProfileCnpj} from './prospecting-lost-filter.mjs';
-import {DEFAULT_SETTINGS,getSettings,matchesRegion} from './digitale-ai-settings.mjs';
+import {DEFAULT_SETTINGS,getSettings,matchesRegion,STATES} from './digitale-ai-settings.mjs';
 import crypto from 'node:crypto';
 import {selectSdr} from './prospecting-assignment.mjs';
 import {OWNER,windowAt,sqlDate,quota} from './prospecting-policy.mjs';
 import {normCnpj,phone,validCnpj} from './prospecting-verification.mjs';
 import {domainOf} from './prospecting-auto-verification.mjs';
+import {blockedProspectingSource} from './prospecting-source-quality.mjs';
 const norm = column => `UPPER(REGEXP_REPLACE(COALESCE(${column},''),'[^A-Za-z0-9]',''))`;
 const digits = column => `REGEXP_REPLACE(COALESCE(${column},''),'[^0-9]','')`;
 export async function duplicate(connection,p) {
+  const [approved]=await connection.execute(
+    'SELECT cnpj FROM prospecting_approved_leads WHERE cnpj=? LIMIT 1',
+    [p.cnpj]
+  );
+  if(approved.length)return 'approved_queue';
   const [clients]=await connection.execute('SELECT cnpj FROM digitale_ai_clients WHERE cnpj=? LIMIT 1',[p.cnpj]);
   if(clients.length)return 'customer_base';
   const common=[p.cnpj,p.company,p.phone,p.phone,'55'+p.phone];
@@ -25,12 +31,114 @@ export async function counts(connection,now=new Date()) {
   const [[row]]=await connection.execute(`SELECT SUM(delivered_at>=? AND external_batch_id IS NULL) AS hour_count,SUM(external_batch_id IS NULL) AS day_count,COUNT(*) AS total_day_count FROM prospecting_auto_deliveries WHERE delivered_at>=?`,[sqlDate(w.hourStart),sqlDate(w.dayStart)]);
   // Count pre-existing IA deliveries as well on the activation day, without altering them.
   const [[legacy]]=await connection.execute(`SELECT SUM(d.created_at>=?) AS hour_count,COUNT(*) AS day_count FROM crm_deals d WHERE d.source='IA PROSPECÇÃO' AND d.created_at>=? AND NOT EXISTS(SELECT 1 FROM prospecting_auto_deliveries a WHERE a.deal_id=d.id)`,[sqlDate(w.hourStart),sqlDate(w.dayStart)]);
-  return {hour:Number(row.hour_count||0)+Number(legacy.hour_count||0),day:Number(row.day_count||0)+Number(legacy.day_count||0),totalDay:Number(row.total_day_count??row.day_count??0)+Number(legacy.day_count||0)};
+  const [[approved]]=await connection.execute(
+    `SELECT
+       SUM(approved_at>=?) AS hour_count,
+       COUNT(*) AS day_count
+     FROM prospecting_approved_leads
+     WHERE approved_at>=?`,
+    [sqlDate(w.hourStart),sqlDate(w.dayStart)]
+  );
+  const ah=Number(approved.hour_count||0);
+  const ad=Number(approved.day_count||0);
+  return {
+    hour:Number(row.hour_count||0)+Number(legacy.hour_count||0)+ah,
+    day:Number(row.day_count||0)+Number(legacy.day_count||0)+ad,
+    totalDay:Number(row.total_day_count??row.day_count??0)+Number(legacy.day_count||0)+ad
+  };
 }
+
+// DIGITALE_DELIVERY_DIRECTORY_GUARD_V10
+const blockedLeadDirectoriesV10 = [
+  'hagah.com.br',
+  'telelistas.net',
+  'telelistas.com',
+  'cylex.com.br',
+  'apontador.com.br',
+  'listamais.com.br',
+  'brasilcnpjs.com.br',
+  'maiscnpj.com.br',
+  'efirma.com.br',
+  'applocal.com.br',
+  'guiatelefone.com',
+  'modafeminina.com.br',
+  'brasillocais.com',
+  'procuracnpj.com.br',
+  'cnpj.biz'
+];
+
+function isDirectoryLeadV10(p) {
+  const hosts = [p?.domain];
+
+  try {
+    hosts.push(new URL(p?.website?.url).hostname);
+  } catch {
+    return true;
+  }
+
+  return hosts.some(value => {
+    const host = String(value || '')
+      .toLowerCase()
+      .replace(/^www\./, '');
+
+    return blockedLeadDirectoriesV10.some(blocked =>
+      host === blocked || host.endsWith('.' + blocked)
+    );
+  });
+}
+
+
+// DIGITALE_REGISTRY_DIRECTORY_GUARD_V12
+const registryDirectoriesV12 = [
+  'cnpjonline.com',
+  'consultacnpj.com',
+  'consultacnpj.org',
+  'consultacnpjfacil.com.br',
+  'cnpjob.com.br',
+  'radardocnpj.com.br',
+  'procuracnpj.com.br',
+  'brasilcnpjs.com.br',
+  'brasilcnpj.net',
+  'achacnpj.com',
+  'cnpj.info',
+  'cnpja.com',
+  'cnpj.biz',
+  'hagah.com.br',
+  'apontador.com.br'
+];
+
+function blockedRegistryDirectoryV12(value) {
+  let host;
+
+  try {
+    host = new URL(value).hostname;
+  } catch {
+    host = String(value || '');
+  }
+
+  host = host.toLowerCase().replace(/^www\./, '').split(':')[0];
+
+  return registryDirectoriesV12.some(blocked =>
+    host === blocked || host.endsWith('.' + blocked)
+  );
+}
+
 export async function deliverVerified(db,p,candidateId=null,{clock=()=>new Date(),externalBatchId=null}={}) {
-  if(!/^[A-Z]{2}$/.test(p.registry?.uf||''))throw Error('outside_target_state');
+  if(blockedProspectingSource(p?.domain)||blockedProspectingSource(p?.website?.url))throw Error('directory_domain_not_eligible');
+  if (isDirectoryLeadV10(p)) throw Error('directory_domain_not_eligible');
+  if (
+    blockedRegistryDirectoryV12(p?.domain) ||
+    blockedRegistryDirectoryV12(p?.website?.url) ||
+    blockedRegistryDirectoryV12(p?.discovery_url)
+  ) {
+    throw Error('registry_directory_not_eligible');
+  }
+
+  if(!Object.hasOwn(STATES,p.registry?.uf||''))throw Error('registry_state_inconclusive');
+  if(p.registry?.mei_status !== false)throw Error('mei_status_unconfirmed');
+  if(p.registry?.manufacturing !== true)throw Error('not_apparel_manufacturer');
   if(p.version!==2||p.owner_id!==OWNER||!validCnpj(p.cnpj)||!phone(p.phone)||p.phone_call_tested!==false||!p.registry?.active||!(p.website?.cnpj_match||(p.identity_verified===true&&p.identity_method==='nome_e_telefone_cadastral'&&p.identity_evidence?.company_name_match===true&&p.identity_evidence?.phone_registry_match===true))||!(p.website?.phone_match||p.website?.phone_source==='registry')||domainOf(p.website.url)!==p.domain)throw Error('invalid_verified_proof');
-  if (!['comprador_tecidos','confeccao','perfil_pendente'].includes(p.buyer_segment) ||
+  if (!['comprador_tecidos','confeccao'].includes(p.buyer_segment) ||
       p.email_search_completed !== true)
     throw Error('buyer_profile_not_verified');
   const connection=await db.getConnection();let locked=false;
@@ -39,6 +147,7 @@ export async function deliverVerified(db,p,candidateId=null,{clock=()=>new Date(
     if(Number(lock.acquired)!==1)throw Error('delivery_lock_timeout');locked=true;
     await connection.beginTransaction();
     const settings=await getSettings(connection);
+    if(!settings.states.includes(p.registry.uf))throw Error('outside_target_state');
     // UF valida ja foi verificada; nao restringir estado.
     if(!settings.enabled){await connection.rollback();return {ok:true,created:false,deferred:true,reason:'prospecting_paused'};}
     // DIGITALE_LOST_PROFILE_BLOCK_V1
@@ -61,8 +170,89 @@ export async function deliverVerified(db,p,candidateId=null,{clock=()=>new Date(
       const [batches]=await connection.execute('SELECT target,status FROM prospecting_external_batches WHERE id=? FOR UPDATE',[externalBatchId]);
       if(!batches.length||batches[0].status!=='running')throw Error('external_batch_not_running');
       const [[batchCount]]=await connection.execute('SELECT COUNT(*) total FROM prospecting_auto_deliveries WHERE external_batch_id=?',[externalBatchId]);
-      if(Number(batchCount.total)>=batches[0].target){await connection.rollback();return {ok:true,created:false,deferred:true,reason:'external_batch_complete'};}
+      if(Number(batchCount.total)+Number((await connection.execute(
+        'SELECT COUNT(*) total FROM prospecting_approved_leads WHERE external_batch_id=?',
+        [externalBatchId]
+      ))[0][0].total)>=batches[0].target){await connection.rollback();return {ok:true,created:false,deferred:true,reason:'external_batch_complete'};}
     }
+    // DIGITALE_APPROVED_QUEUE_V1
+    // Lead aprovado fica sem responsável comercial.
+    // Não cria empresa, contato ou negócio atribuído à Nicolle.
+    await connection.execute(
+      `INSERT INTO prospecting_approved_leads
+       (cnpj,candidate_id,company,email,phone,website,uf,proof,external_batch_id)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [
+        p.cnpj,
+        candidateId,
+        String(p.company||'').slice(0,255),
+        String(p.email||'').trim().toLowerCase().slice(0,254)||null,
+        String(p.phone||'').slice(0,40)||null,
+        p.website?.url||null,
+        p.registry.uf,
+        JSON.stringify(p),
+        externalBatchId
+      ]
+    );
+
+    if(candidateId) {
+      await connection.execute(
+        `UPDATE prospecting_auto_candidates
+         SET status='verified',
+             reason=NULL,
+             verified_at=UTC_TIMESTAMP(6),
+             proof=?,
+             company=?,
+             phone=?,
+             cnpj=?,
+             updated_at=UTC_TIMESTAMP(6)
+         WHERE id=?`,
+        [JSON.stringify(p),p.company,p.phone,p.cnpj,candidateId]
+      );
+    }
+
+    const queueWindow=windowAt(clock());
+    if(
+      !queueWindow.open ||
+      queueWindow.date!==windowAt(now).date ||
+      queueWindow.hour!==windowAt(now).hour
+    ){
+      await connection.rollback();
+      return {ok:true,created:false,deferred:true,reason:'window_changed'};
+    }
+
+    if(externalBatchId) {
+      const [[batchTotal]]=await connection.execute(
+        `SELECT
+          (SELECT COUNT(*) FROM prospecting_auto_deliveries
+           WHERE external_batch_id=?) +
+          (SELECT COUNT(*) FROM prospecting_approved_leads
+           WHERE external_batch_id=?) AS total`,
+        [externalBatchId,externalBatchId]
+      );
+      const [[target]]=await connection.execute(
+        'SELECT target FROM prospecting_external_batches WHERE id=?',
+        [externalBatchId]
+      );
+      if(Number(batchTotal.total)>=Number(target.target)){
+        await connection.execute(
+          `UPDATE prospecting_external_batches
+           SET status='completed',completed_at=UTC_TIMESTAMP(6)
+           WHERE id=?`,
+          [externalBatchId]
+        );
+      }
+    }
+
+    await connection.commit();
+    return {
+      ok:true,
+      created:true,
+      approved:true,
+      cnpj:p.cnpj,
+      owner_id:null
+    };
+
     const ownerId=OWNER;
     const assignedProof={...p,assigned_owner_id:ownerId,distribution:'nicolle_fixed'};
     const [contexts]=await connection.execute("SELECT p.id pipeline_id,s.id stage_id FROM crm_pipelines p JOIN crm_stages s ON s.pipeline_id=p.id WHERE s.name='Prospecção' ORDER BY p.is_default DESC,p.sort_order,s.sort_order LIMIT 1");

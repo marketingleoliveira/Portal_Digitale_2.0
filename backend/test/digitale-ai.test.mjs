@@ -19,11 +19,11 @@ test('configuration validates caps, regions, segments and pause',()=>{
 });
 test('configured region and segment change both discovery and registry acceptance',async()=>{
   const settings={...DEFAULT_SETTINGS,states:['SC'],segments:['uniformes profissionais']};
-  for(let cursor=0;cursor<100;cursor++){assert.match(searchPlan(cursor,settings).q,/Santa Catarina SC estado de Santa Catarina/);assert.match(searchPlan(cursor,settings).q,/uniformes profissionais/);}
-  const fetchPage=async()=>({url:'https://example.com/',body:'CNPJ 19.131.243/0001-97 telefone (11) 99876-5432'});
-  const lookup=async()=>({url:'https://registry.example/',data:{cnpj,razao_social:'Teste',situacao_cadastral:2,cnae_fiscal:1412601,uf:'SC'}});
+  for(let cursor=0;cursor<100;cursor++){assert.match(searchPlan(cursor,settings).q,/Santa Catarina.*SC/);assert.match(searchPlan(cursor,settings).q,/uniformes profissionais/);}
+  const fetchPage=async()=>({url:'https://example.com/',body:'CNPJ 19.131.243/0001-97 telefone (11) 99876-5432 Somos uma confecção de uniformes de produção própria.'});
+  const lookup=async()=>({url:'https://registry.example/',data:{cnpj,razao_social:'Teste',situacao_cadastral:2,cnae_fiscal:1412601,mei_status:false,uf:'SC'}});
   assert.equal((await verifyCandidate({website:'https://example.com/'},{fetchPage,lookup,settings})).registry.uf,'SC');
-  await assert.rejects(verifyCandidate({website:'https://example.com/'},{fetchPage,lookup}),/outside_target_state/);
+  await assert.rejects(verifyCandidate({website:'https://example.com/'},{fetchPage,lookup,settings:{...DEFAULT_SETTINGS,states:['SP']}}),/outside_target_state/);
 });
 test('three calendar months handles exact boundary, short months and leap years',()=>{
   assert.equal(inactivityCutoff(now),'2026-07-13');
@@ -39,11 +39,11 @@ test('spreadsheet rows reject invalid CNPJ, impossible/future dates and keep lat
   assert.equal(plan.rows.length,1);assert.equal(plan.rows[0].last_order_date,'2026-10-13');assert.equal(plan.repeated,1);assert.equal(plan.errors.length,1);assert.equal(plan.errors[0].row,4);
 });
 test('imported customers block duplicate checks regardless of activity status',async()=>{
-  const queries=[];const connection={execute:async sql=>{queries.push(sql);return [[{cnpj}]];}};
-  assert.equal(await duplicate(connection,{cnpj}),'customer_base');assert.equal(queries.length,1);
+  const queries=[];const connection={execute:async sql=>{queries.push(sql);return [sql.includes('FROM digitale_ai_clients')?[{cnpj}]:[]];}};
+  assert.equal(await duplicate(connection,{cnpj}),'customer_base');assert.equal(queries.length,2);
 });
 test('delivery rechecks current configuration inside transaction before CRM writes',async()=>{
-  const proof={version:2,owner_id:'fba75bd9-8f92-4e2b-83f9-3bc48d7fa4bd',cnpj,phone:'11998765432',phone_call_tested:false,domain:'example.com',registry:{uf:'SP',active:true},website:{url:'https://example.com/',cnpj_match:true,phone_match:true}};
+  const proof={version:2,owner_id:'fba75bd9-8f92-4e2b-83f9-3bc48d7fa4bd',cnpj,phone:'11998765432',phone_call_tested:false,domain:'example.com',buyer_segment:'confeccao',email_search_completed:true,registry:{uf:'SP',active:true,mei_status:false,manufacturing:true},website:{url:'https://example.com/',cnpj_match:true,phone_match:true}};
   for(const settings of [{...DEFAULT_SETTINGS,states:['SC']},{...DEFAULT_SETTINGS,enabled:false}]){
     const writes=[];const connection={query:async()=>[[{acquired:1}]],execute:async(sql)=>{if(sql.includes('digitale_ai_settings'))return [[{settings:JSON.stringify(settings)}]];writes.push(sql);return [[]];},beginTransaction:async()=>{},rollback:async()=>{},release:()=>{}};
     if(settings.enabled)await assert.rejects(deliverVerified({getConnection:async()=>connection},proof),/outside_target_state/);

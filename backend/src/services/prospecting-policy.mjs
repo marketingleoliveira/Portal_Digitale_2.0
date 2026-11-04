@@ -1,7 +1,7 @@
 import {DEFAULT_SETTINGS} from './digitale-ai-settings.mjs';
 export const OWNER = 'fba75bd9-8f92-4e2b-83f9-3bc48d7fa4bd';
-export const HOURLY_TARGET = 16;
-export const DAILY_TARGET = 160;
+export const HOURLY_TARGET = DEFAULT_SETTINGS.hourly_target;
+export const DAILY_TARGET = DEFAULT_SETTINGS.daily_target;
 export function windowAt(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', hourCycle:'h23'}).formatToParts(now);
   const part = type => parts.find(p => p.type === type).value;

@@ -68,7 +68,7 @@ export async function getPublic(url,hops=0){
   const req=(u.protocol==='https:'?https:http).get(u,{headers:{'User-Agent':'DigitaleLeadVerifier/1.0','Accept':'application/json,text/html'},lookup:(hostname,opts,cb)=>opts.all?cb(null,[pinned]):cb(null,pinned.address,pinned.family)},res=>{
    if([301,302,303,307,308].includes(res.statusCode)){res.resume();resolve({redirect:new URL(res.headers.location,u).href});return;}
    if(res.statusCode!==200){res.resume();reject(Error(`fonte_http_${res.statusCode}`));return;}
-   let size=0,chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>1000000)res.destroy(Error('fonte_muito_grande'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>resolve({url:u.href,body:decodePublicBody(Buffer.concat(chunks), res.headers['content-type'])}));
+   let size=0,chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>3000000)res.destroy(Error('fonte_muito_grande'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>resolve({url:u.href,body:decodePublicBody(Buffer.concat(chunks), res.headers['content-type'])}));
   });req.setTimeout(15000,()=>req.destroy(Error('fonte_timeout')));req.on('error',reject);
  });return response.redirect?getPublic(response.redirect,hops+1):response;
 }

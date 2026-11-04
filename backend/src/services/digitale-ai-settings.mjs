@@ -1,5 +1,15 @@
 export const STATES = {AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
-export const DEFAULT_SETTINGS = Object.freeze({enabled:true,inactivity_months:3,hourly_target:16,daily_target:160,states:['SP'],segments:['moda fitness','moda praia','moda esportiva','moda íntima','vestuário','lingerie','uniformes']});
+import {createHash} from 'node:crypto';
+export const DEFAULT_SETTINGS = Object.freeze({enabled:true,inactivity_months:3,hourly_target:20,daily_target:160,states:Object.freeze(Object.keys(STATES).sort()),segments:Object.freeze(['moda fitness','moda praia','moda esportiva','moda íntima','vestuário','lingerie','uniformes'])});
+export function settingsRevision(settings) {
+  return createHash('sha256').update(JSON.stringify(validateSettings(settings))).digest('hex');
+}
+export function assertSettingsRevision(settings,revision) {
+  if(typeof revision!=='string'||revision!==settingsRevision(settings)) {
+    const error=Error('A configuração mudou ou esta tela está desatualizada. Atualize a página antes de salvar.');
+    error.status=409;throw error;
+  }
+}
 export function validateSettings(input) {
   const months=input?.inactivity_months===undefined?3:input.inactivity_months;
   if(!Number.isInteger(months)||months<1||months>60)throw Error('O prazo de inatividade deve ser de 1 a 60 meses.');
@@ -12,7 +22,7 @@ export function validateSettings(input) {
 }
 export async function getSettings(connection) {
   const [rows]=await connection.execute('SELECT settings FROM digitale_ai_settings WHERE id=1');
-  if(!rows.length)return {...DEFAULT_SETTINGS};
+  if(!rows.length)return validateSettings(DEFAULT_SETTINGS);
   return validateSettings(typeof rows[0].settings==='string'?JSON.parse(rows[0].settings):rows[0].settings);
 }
 export function matchesRegion(registry,settings=DEFAULT_SETTINGS) {

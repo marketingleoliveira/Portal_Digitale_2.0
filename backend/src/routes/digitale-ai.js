@@ -5,7 +5,8 @@ import crypto from 'node:crypto';
 import {db} from '../database.js';
 import {normCnpj} from '../services/prospecting-verification.mjs';
 import {requireAuth} from '../lib/auth.js';
-import {getSettings,validateSettings,STATES} from '../services/digitale-ai-settings.mjs';
+import {getSettings,validateSettings,settingsRevision,assertSettingsRevision,STATES} from '../services/digitale-ai-settings.mjs';
+import {reopenGeographicCandidates} from '../services/prospecting-region-retry.mjs';
 import {validateClientRows,inactivityCutoff,clientStatus,refreshClientStatuses} from '../services/digitale-ai-clients.mjs';
 const router=express.Router();
 router.use(requireAuth,requireAIAccess);
@@ -17,19 +18,21 @@ async function lockedTransaction(fn) {
     await connection.beginTransaction();const result=await fn(connection);await connection.commit();return result;
   }catch(e){await connection.rollback();throw e;}finally{if(locked)await connection.query("SELECT RELEASE_LOCK('digitale:crm-import')");connection.release();}
 }
-router.get('/',async(req,res,next)=>{try{res.json({settings:await getSettings(db),states:STATES,timezone:'America/Sao_Paulo',start_hour:8,end_hour:18});}catch(e){next(e);}});
+router.get('/',async(req,res,next)=>{try{const settings=await getSettings(db);res.json({settings,revision:settingsRevision(settings),states:STATES,timezone:'America/Sao_Paulo',start_hour:8,end_hour:18});}catch(e){next(e);}});
 router.put('/',async(req,res,next)=>{
-  let settings;try{settings=validateSettings({...req.body,inactivity_months:req.body?.inactivity_months===undefined?(await getSettings(db)).inactivity_months:req.body.inactivity_months});}catch(e){return res.status(422).json({error:e.message});}
+  let settings;
   try{
     await lockedTransaction(async connection=>{
       const before=await getSettings(connection);
-      await connection.execute('UPDATE digitale_ai_settings SET settings=?,updated_by=? WHERE id=1',[JSON.stringify(settings),req.user.id]);
+      assertSettingsRevision(before,req.body?.revision);
+      try{settings=validateSettings({...req.body,inactivity_months:req.body?.inactivity_months===undefined?before.inactivity_months:req.body.inactivity_months});}catch(e){e.status=422;throw e;}
+      await connection.execute('INSERT INTO digitale_ai_settings(id,settings,updated_by) VALUES(1,?,?) ON DUPLICATE KEY UPDATE settings=VALUES(settings),updated_by=VALUES(updated_by)',[JSON.stringify(settings),req.user.id]);
       await connection.execute('INSERT INTO digitale_ai_settings_audit(id,before_settings,after_settings,changed_by) VALUES(?,?,?,?)',[crypto.randomUUID(),JSON.stringify(before),JSON.stringify(settings),req.user.id]);
-      if(JSON.stringify(before.states)!==JSON.stringify(settings.states))await connection.execute("UPDATE prospecting_auto_candidates SET status='review',reason='region_configuration_changed',next_attempt_at=UTC_TIMESTAMP(6) WHERE status='rejected' AND reason='outside_target_state'");
+      if(settings.states.some(uf=>!before.states.includes(uf)))await reopenGeographicCandidates(connection);
       if(JSON.stringify(before.states)!==JSON.stringify(settings.states)||JSON.stringify(before.segments)!==JSON.stringify(settings.segments))await connection.execute('UPDATE prospecting_auto_runtime SET query_cursor=0,provider_retry_at=NULL,provider_failures=0 WHERE id=1');
       await refreshClientStatuses(connection);
-    });res.json({ok:true,settings});
-  }catch(e){next(e);}
+    });res.json({ok:true,settings,revision:settingsRevision(settings)});
+  }catch(e){if(e.status===409||e.status===422)return res.status(e.status).json({error:e.message});next(e);}
 });
 async function planImport(body) {
   const plan=validateClientRows(body?.rows);
