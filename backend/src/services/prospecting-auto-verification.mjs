@@ -1,5 +1,5 @@
 import { classifyTextileBuyer } from './prospecting-textile-profile.mjs';
-import {DEFAULT_SETTINGS,matchesRegion,STATES} from './digitale-ai-settings.mjs';
+import {DEFAULT_SETTINGS,matchesRegion,matchesCnae,STATES} from './digitale-ai-settings.mjs';
 import {normCnpj,validCnpj,phone,containsCnpj,publishedCnpjs,getPublic,plain,links,socialUrl} from './prospecting-verification.mjs';
 import {OWNER} from './prospecting-policy.mjs';
 import {contactLinks,robotsAllowed} from './prospecting-site-pages.mjs';
@@ -279,7 +279,7 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
     // Nao aprova CNPJ por semelhanca de nome.
     const searches = [
       {q: '"' + domain + '" CNPJ', engines: 'yahoo'},
-      {q: '"' + domain + '" "razao social"', engines: 'yahoo'}
+      {q: '"' + domain + '" "razao social"', engines: 'duckduckgo'}
     ];
 
     const possible = new Set();
@@ -371,6 +371,7 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
   if(r.mei_status === true)throw Error('mei_excluded');
   if(r.mei_status !== false)throw Error('mei_status_unconfirmed');
   if(!manufacturing(r))throw Error('not_apparel_manufacturer');
+  if(!matchesCnae(r,settings))throw Error('outside_target_cnae');
   await onProgress('profile',{cnpj,company:r.nome_fantasia||r.razao_social,uf:r.uf});
   const uf=String(r.uf||'').trim().toUpperCase();
   if(!Object.hasOwn(STATES,uf))throw Error('registry_state_inconclusive');

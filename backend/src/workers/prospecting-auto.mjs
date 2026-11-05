@@ -20,7 +20,7 @@ async function discover(cursor,runId) {
  if(!settings.enabled)return 0;
  const result=await discoverCandidates(db,cursor,{settings});
  if(result.degraded.length)await db.execute('UPDATE prospecting_auto_runs SET error=? WHERE id=?',[('search_degraded_'+result.degraded.join('_')).slice(0,191),runId]);
- console.log(JSON.stringify({event:'discovery_completed',cursor,page:result.plan.pageno,received:result.received,checked:result.checked,rejected_sources:result.rejected,found:result.found,degraded:result.degraded}));
+ console.log(JSON.stringify({event:'discovery_completed',cursor,page:result.plan.pageno,received:result.received,checked:result.checked,rejected_sources:result.rejected,found:result.found,recovered:result.recovered||0,degraded:result.degraded}));
  await db.execute('UPDATE prospecting_auto_runtime SET heartbeat_at=UTC_TIMESTAMP(6),query_cursor=? WHERE id=1',[cursor+1]);
  return result.found;
 }
@@ -119,19 +119,21 @@ async function cycle() {
           (reason==='robots_disallow' && Number(candidate.attempts)>=2) ||
           (reason==='fonte_http_404' && Number(candidate.attempts)>=4) ||
           (reason==='business_phone_missing' && Number(candidate.attempts)>=2)
-        )||['excluded_or_own_domain','not_apparel_manufacturer','outside_textile_buyer_profile','registry_inactive_or_mismatch','outside_target_state','outside_profile_history','mei_excluded'].includes(reason);
+        )||['excluded_or_own_domain','not_apparel_manufacturer','outside_target_cnae','outside_textile_buyer_profile','registry_inactive_or_mismatch','outside_target_state','outside_profile_history','mei_excluded'].includes(reason);
         await db.execute('UPDATE prospecting_auto_candidates SET status=?,reason=?,next_attempt_at=?,updated_at=UTC_TIMESTAMP(6) WHERE id=?',[['already_in_crm','customer_base'].includes(reason)?'duplicate':rejected?'rejected':'review',reason,rejected?null:sqlDate(new Date(Date.now()+Math.min(86400000,3600000*2**Math.min(candidate.attempts,4)))),candidate.id]);
         await reporter.result(['already_in_crm','customer_base'].includes(reason)?'duplicate':rejected?'rejected':'review',reason);
       }
       await db.execute("UPDATE prospecting_auto_runtime SET heartbeat_at=UTC_TIMESTAMP(6) WHERE id=1");
       await sleep(1000);
       }));
-      for(const result of results){
+      for(const [resultIndex,result] of results.entries()){
         if(result.status==='rejected'){
           console.error(JSON.stringify({
             event:'candidate_unexpected_failure',
             reason:safeReason(result.reason)
           }));
+          // Uma exceção fora do verificador não pode deixar o candidato preso.
+          await db.execute("UPDATE prospecting_auto_candidates SET status='review',reason='worker_transient_failure',next_attempt_at=DATE_ADD(UTC_TIMESTAMP(6),INTERVAL 15 MINUTE),updated_at=UTC_TIMESTAMP(6) WHERE id=? AND status='verifying'",[batch[resultIndex].id]).catch(()=>{});
         }
       }
     }
@@ -140,11 +142,13 @@ async function cycle() {
     console.log(JSON.stringify({event:'cycle_completed',found,approved,delivered,hour_quota_used:used.hour,day_quota_used:used.day,deficit:Math.max(0,(await getSettings(db)).hourly_target-used.hour)}));
   }catch(e){await db.execute("UPDATE prospecting_auto_runs SET finished_at=UTC_TIMESTAMP(6),status='error',error=? WHERE id=?",[safeReason(e),id]);console.error(JSON.stringify({event:'cycle_error',reason:safeReason(e)}));}
 }
-let lockConnection;
+let lockConnection,heartbeatTimer;
 try {
   lockConnection=await db.getConnection();
   const [[lock]]=await lockConnection.query("SELECT GET_LOCK('digitale:prospecting-worker',0) acquired");
   if(Number(lock.acquired)!==1)throw Error('worker_already_running');
+  heartbeatTimer=setInterval(()=>{db.execute('UPDATE prospecting_auto_runtime SET heartbeat_at=UTC_TIMESTAMP(6) WHERE id=1').catch(()=>{});},30000);
+  heartbeatTimer.unref();
   // Recovery leaves CRM writes and delivery accounting in their original transaction.
   await db.execute("UPDATE prospecting_auto_runs SET status='interrupted',finished_at=UTC_TIMESTAMP(6),error='service_restarted' WHERE status='running'");
   await db.execute("UPDATE prospecting_auto_candidates SET status='review',next_attempt_at=UTC_TIMESTAMP(6),reason='service_restarted' WHERE status='verifying'");
@@ -174,4 +178,4 @@ try {
     }
   }while(!stopping);
 } catch(e){console.error(JSON.stringify({event:'worker_error',reason:safeReason(e)}));process.exitCode=1;}
-finally {if(lockConnection){await lockConnection.query("SELECT RELEASE_LOCK('digitale:prospecting-worker')");lockConnection.release();}await db.end();}
+finally {clearInterval(heartbeatTimer);if(lockConnection){await lockConnection.query("SELECT RELEASE_LOCK('digitale:prospecting-worker')");lockConnection.release();}await db.end();}

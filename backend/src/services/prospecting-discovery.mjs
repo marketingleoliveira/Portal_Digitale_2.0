@@ -3,20 +3,29 @@ import crypto from 'node:crypto';
 import {getPublic} from './prospecting-verification.mjs';
 import {blockedProspectingSource,apparelSearchHint,officialManufacturerPage} from './prospecting-source-quality.mjs';
 import {domainOf,excludedDomain} from './prospecting-auto-verification.mjs';
+import {contactLinks} from './prospecting-site-pages.mjs';
+import {VERIFICATION_POLICY,recoverableCandidate,recoverCandidate} from './prospecting-candidate-recovery.mjs';
 
-const commercialTerms=['fabricante de','confecção de','fábrica de','produção própria de'];
-export const SEARCH_SPAN=DEFAULT_SETTINGS.states.length*DEFAULT_SETTINGS.segments.length*commercialTerms.length*3;
+const commercialTerms=['confecção private label de','fabricante de','confecção de','fábrica de','produção própria de'];
+const paulistaCities=['Americana','Campinas','São José do Rio Preto','Sorocaba','São José dos Campos','Ribeirão Preto','Franca','Birigui','Guarulhos','Osasco','Santo André','São Bernardo do Campo','Indaiatuba','Santa Bárbara d\'Oeste','Nova Odessa','Limeira','Piracicaba','Jundiaí','São Carlos','Araraquara','Bauru','Marília','Presidente Prudente','Brás São Paulo'];
+export const SEARCH_SPAN=DEFAULT_SETTINGS.states.length*(paulistaCities.length+1)*DEFAULT_SETTINGS.segments.length*commercialTerms.length*3*2;
 export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
   if(!Number.isSafeInteger(cursor)||cursor<0)throw Error('invalid_search_cursor');
   const states=[...new Set(settings.states)].sort();
-  const segments=settings.segments.map(s=>s.trim()).filter(Boolean);
+  let segments=settings.segments.map(s=>s.trim()).filter(Boolean);
+  // O CNAE 1412-6/01 cobre peças de vestuário; prioriza o segmento já configurado.
+  if(settings.cnaes?.includes('1412601'))segments=[...new Set(['vestuário','roupas de alfaiataria','moda feminina','moda masculina','moda infantil','camisetas','jeans',...segments])];
   if(!states.length||!segments.length)throw Error('search_regions_empty');
-  // Visit every selected UF before rotating segment/production term/page.
-  const uf=states[cursor%states.length],variant=Math.floor(cursor/states.length);
-  const segment=segments[variant%segments.length];
-  const term=commercialTerms[Math.floor(variant/segments.length)%commercialTerms.length];
-  const page=1+Math.floor(variant/(segments.length*commercialTerms.length))%3;
-  return {q:`${term} ${segment} ${STATES[uf]} ${uf} site oficial`,pageno:page,engines:'yahoo'};
+  // Alterna peças/segmentos antes de repetir dezenas de buscas do mesmo produto.
+  const uf=states[cursor%states.length],regionalCursor=Math.floor(cursor/states.length);
+  const cities=uf==='SP'?['',...paulistaCities]:[''];
+  const city=cities[Math.floor(regionalCursor/segments.length)%cities.length];
+  const segment=segments[regionalCursor%segments.length];
+  const variant=Math.floor(regionalCursor/(cities.length*segments.length));
+  const term=commercialTerms[variant%commercialTerms.length];
+  const page=1+Math.floor(variant/commercialTerms.length)%3;
+  const identityHint=settings.cnaes?.length&&regionalCursor%3===0?' CNPJ':'';
+  return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]} ${uf} site oficial${identityHint}`,pageno:page,engines:cursor%2===0?'yahoo':'duckduckgo'};
 }
 
 // DIGITALE_REGISTRY_DIRECTORY_GUARD_V12
@@ -55,7 +64,21 @@ function blockedRegistryDirectoryV12(value) {
 }
 
 export function discoveryResult(result) {
-  if(blockedProspectingSource(result?.url)||!apparelSearchHint(result?.title||'',result?.content||''))return null;
+  // DIGITALE_DISCOVERY_PERFORMANCE_V1
+  // Permite indicios comerciais claros, mantendo a verificacao
+  // obrigatoria do site oficial antes de criar o candidato.
+  const searchText = String(
+    (result?.title || '') + ' ' + (result?.content || '')
+  );
+  const relevantCommercialEvidence =
+    /confec[cç][aã]o|fabricante|f[aá]brica de roupas|produ[cç][aã]o pr[oó]pria|private.label|moda fitness|moda feminina|moda masculina|moda infantil|ind[uú]stria do vestu[aá]rio/i
+      .test(searchText);
+
+  if (blockedProspectingSource(result?.url)) return null;
+  if (
+    !apparelSearchHint(result?.title || '', result?.content || '') &&
+    !relevantCommercialEvidence
+  ) return null;
   if (blockedRegistryDirectoryV12(result?.url)) {
     return null;
   }
@@ -268,37 +291,89 @@ export function discoveryResult(result) {
   }
 }
 
+async function searchWithFallback(endpoint,fetchSearch) {
+  const first=endpoint.searchParams.get('engines');
+  let lastError,empty;
+  const degraded=[];
+  for(const engine of [first,first==='yahoo'?'duckduckgo':'yahoo']) {
+    const url=new URL(endpoint);url.searchParams.set('engines',engine);
+    try {
+      const response=await fetchSearch(url,{signal:AbortSignal.timeout(12000)});
+      if(!response.ok)throw Error('discovery_http_'+response.status);
+      const body=await response.json();
+      if(!Array.isArray(body.results))throw Error('discovery_invalid_response');
+      const failed=(body.unresponsive_engines||[]).map(e=>String(e[0]).replace(/[^a-z0-9_]/gi,''));
+      degraded.push(...failed);
+      if(body.results.length)return {body,engine,degraded:[...new Set(degraded)]};
+      if(failed.length)throw Error('discovery_provider_unavailable');
+      empty={body,engine,degraded:[...new Set(degraded)]};
+    }catch(error){lastError=error;degraded.push(engine);}
+  }
+  if(empty)return empty;
+  throw lastError||Error('discovery_provider_unavailable');
+}
+
 export async function discoverCandidates(db,cursor,{fetchSearch=fetch,fetchSite=getPublic,settings=DEFAULT_SETTINGS}={}) {
   const plan=searchPlan(cursor,settings),endpoint=new URL('http://127.0.0.1:8888/search');
   endpoint.search=new URLSearchParams({...plan,pageno:String(plan.pageno),format:'json',language:'pt-BR',safesearch:'1'});
-  const response=await fetchSearch(endpoint,{signal:AbortSignal.timeout(20000)});
-  if(!response.ok)throw Error('discovery_http_'+response.status);
-  const body=await response.json();
-  if(!Array.isArray(body.results))throw Error('discovery_invalid_response');
-  const degraded=(body.unresponsive_engines||[]).map(e=>String(e[0]).replace(/[^a-z0-9_]/gi,''));
-  if(!body.results.length&&degraded.includes(plan.engines))throw Error('discovery_provider_unavailable');
-  let found=0,checked=0,rejected=0;
+  const search=await searchWithFallback(endpoint,fetchSearch);
+  let body=search.body;const degraded=search.degraded;plan.engines=search.engine;
+  const resultEngines=new Map(body.results.map(result=>[result.url,search.engine]));
+  let found=0,recovered=0,checked=0,rejected=0;
+  // Uma página esgotada não deve consumir ciclos indefinidamente com as mesmas empresas.
+  const known=[];
+  const existingDomains=new Map();
+  for(const result of body.results.slice(0,12)) {
+    const candidate=discoveryResult(result);if(!candidate)continue;
+    if(existingDomains.has(candidate.domain))continue;
+    const [existing]=await db.execute('SELECT id,status,reason,proof FROM prospecting_auto_candidates WHERE domain=? LIMIT 1',[candidate.domain]);
+    existingDomains.set(candidate.domain,existing[0]||null);
+    if(existing.length&&!recoverableCandidate(existing[0]))known.push(candidate.domain);
+  }
+  if(known.length>=3) {
+    const broadened=new URL(endpoint);
+    broadened.searchParams.set('q',plan.q+' '+[...new Set(known)].slice(0,8).map(domain=>'-site:'+domain).join(' '));
+    broadened.searchParams.set('pageno','1');
+    broadened.searchParams.set('engines',plan.engines==='yahoo'?'duckduckgo':'yahoo');
+    try {
+      const retry=await fetchSearch(broadened,{signal:AbortSignal.timeout(12000)});
+      if(retry.ok){const extra=await retry.json();if(Array.isArray(extra.results)){
+        for(const result of extra.results)if(!resultEngines.has(result.url))resultEngines.set(result.url,broadened.searchParams.get('engines'));
+        body={...body,results:[...body.results,...extra.results]};
+      }}
+    }catch{}
+  }
   const seen=new Set();
   for(const result of body.results.slice(0,40)) {
     const candidate=discoveryResult(result);if(!candidate||seen.has(candidate.domain))continue;
     seen.add(candidate.domain);
-    const [existing]=await db.execute('SELECT id FROM prospecting_auto_candidates WHERE domain=? LIMIT 1',[candidate.domain]);
-    if(existing.length)continue;
+    if(!existingDomains.has(candidate.domain)){
+      const [existing]=await db.execute('SELECT id,status,reason,proof FROM prospecting_auto_candidates WHERE domain=? LIMIT 1',[candidate.domain]);
+      existingDomains.set(candidate.domain,existing[0]||null);
+    }
+    const existing=existingDomains.get(candidate.domain);
+    if(existing&&!recoverableCandidate(existing))continue;
     if(checked>=8)break;
     checked++;
     let official=null;
     // Search snippets only nominate a site. Production evidence must be fetched
     // from that exact host before it enters the candidate queue.
-    for(const url of [...new Set([new URL(candidate.url).origin+'/',candidate.url])]) {
+    const pagesToCheck=[...new Set([new URL(candidate.url).origin+'/',candidate.url])];
+    for(const url of pagesToCheck) {
       try {
         const page=await fetchSite(url);
         if(domainOf(page.url)===candidate.domain&&officialManufacturerPage(page)){official=page;break;}
+        if(domainOf(page.url)===candidate.domain)for(const link of contactLinks(page,candidate.domain)){
+          if(pagesToCheck.length>=5)break;
+          if(!pagesToCheck.includes(link))pagesToCheck.push(link);
+        }
       }catch{}
     }
     if(!official){rejected++;continue;}
-    const evidence={discovery:{query:plan.q,engine:plan.engines,source_url:candidate.url,checked_url:official.url,manufacturer_evidence:true,checked_at:new Date().toISOString()}};
+    const evidence={verification_policy:VERIFICATION_POLICY,discovery:{query:plan.q,engine:resultEngines.get(result.url)||plan.engines,source_url:candidate.url,checked_url:official.url,manufacturer_evidence:true,checked_at:new Date().toISOString()}};
+    if(existing){recovered+=await recoverCandidate(db,existing,official,evidence);continue;}
     const [insert]=await db.execute('INSERT IGNORE INTO prospecting_auto_candidates(id,discovery_url,domain,proof) VALUES(?,?,?,?)',[crypto.randomUUID(),official.url,candidate.domain,JSON.stringify(evidence)]);
     found+=Number(insert.affectedRows||0);
   }
-  return {found,received:body.results.length,checked,rejected,degraded,plan};
+  return {found,recovered,received:body.results.length,checked,rejected,degraded,plan};
 }

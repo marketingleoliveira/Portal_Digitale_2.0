@@ -11,6 +11,8 @@ export function assertSettingsRevision(settings,revision) {
   }
 }
 export function validateSettings(input) {
+  const cnaes=input?.cnaes??[];
+  if(!Array.isArray(cnaes)||cnaes.length>20||cnaes.some(c=>typeof c!=='string'||!/^\d{7}$|^\d{4}-\d\/\d{2}$/.test(c.trim())))throw Error('Informe CNAEs completos, como 1412-6/01, um por linha (até 20).');
   const months=input?.inactivity_months===undefined?3:input.inactivity_months;
   if(!Number.isInteger(months)||months<1||months>60)throw Error('O prazo de inatividade deve ser de 1 a 60 meses.');
   if(typeof input?.enabled!=='boolean')throw Error('Informe se a prospecção está ativa.');
@@ -18,7 +20,12 @@ export function validateSettings(input) {
   if(!Number.isInteger(input.daily_target)||input.daily_target<1||input.daily_target>1000||input.daily_target<input.hourly_target)throw Error('A quantidade diária deve ser de 1 a 1.000 e não pode ser menor que a quantidade por hora.');
   if(!Array.isArray(input.states)||!input.states.length||input.states.length>27||input.states.some(uf=>!Object.hasOwn(STATES,uf)))throw Error('Selecione pelo menos um estado válido.');
   if(!Array.isArray(input.segments)||!input.segments.length||input.segments.length>20||input.segments.some(s=>typeof s!=='string'||s.trim().length<2||s.trim().length>80||/[\r\n\x00-\x1f]/.test(s)))throw Error('Informe de 1 a 20 segmentos, com 2 a 80 caracteres cada.');
-  return {enabled:input.enabled,inactivity_months:months,hourly_target:input.hourly_target,daily_target:input.daily_target,states:[...new Set(input.states)].sort(),segments:[...new Set(input.segments.map(s=>s.trim()))]};
+  return {enabled:input.enabled,inactivity_months:months,hourly_target:input.hourly_target,daily_target:input.daily_target,states:[...new Set(input.states)].sort(),segments:[...new Set(input.segments.map(s=>s.trim()))],cnaes:[...new Set(cnaes.map(c=>c.replace(/\D/g,'')))].sort()};
+}
+// CNAE exato da atividade principal, sem aceitar um grupo genérico ou atividade secundária.
+export function matchesCnae(registry,settings=DEFAULT_SETTINGS) {
+  const required=settings.cnaes||[];
+  return !required.length||required.includes(String(registry?.cnae_fiscal??registry?.primary_cnae??'').replace(/\D/g,''));
 }
 export async function getSettings(connection) {
   const [rows]=await connection.execute('SELECT settings FROM digitale_ai_settings WHERE id=1');

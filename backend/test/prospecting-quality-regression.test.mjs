@@ -102,3 +102,11 @@ test('region contraction does not reopen geographic rejections, expansion does',
  current=(await route.call('GET')).data;
  assert.equal((await route.call('PUT',{...current.settings,states:['SP','MG'],revision:current.revision})).code,200);assert.equal(route.reopens,1);
 });
+
+test('legacy settings clients cannot erase the saved exact CNAE filter',async()=>{
+ const route=settingsRoute({...DEFAULT_SETTINGS,cnaes:['1412601']});
+ const fresh=(await route.call('GET')).data;
+ const {cnaes,...legacy}=fresh.settings;
+ const saved=await route.call('PUT',{...legacy,revision:fresh.revision});
+ assert.equal(saved.code,200);assert.deepEqual(route.saved.cnaes,['1412601']);
+});

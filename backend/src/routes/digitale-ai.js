@@ -25,11 +25,11 @@ router.put('/',async(req,res,next)=>{
     await lockedTransaction(async connection=>{
       const before=await getSettings(connection);
       assertSettingsRevision(before,req.body?.revision);
-      try{settings=validateSettings({...req.body,inactivity_months:req.body?.inactivity_months===undefined?before.inactivity_months:req.body.inactivity_months});}catch(e){e.status=422;throw e;}
+      try{settings=validateSettings({...req.body,cnaes:req.body?.cnaes===undefined?before.cnaes:req.body.cnaes,inactivity_months:req.body?.inactivity_months===undefined?before.inactivity_months:req.body.inactivity_months});}catch(e){e.status=422;throw e;}
       await connection.execute('INSERT INTO digitale_ai_settings(id,settings,updated_by) VALUES(1,?,?) ON DUPLICATE KEY UPDATE settings=VALUES(settings),updated_by=VALUES(updated_by)',[JSON.stringify(settings),req.user.id]);
       await connection.execute('INSERT INTO digitale_ai_settings_audit(id,before_settings,after_settings,changed_by) VALUES(?,?,?,?)',[crypto.randomUUID(),JSON.stringify(before),JSON.stringify(settings),req.user.id]);
       if(settings.states.some(uf=>!before.states.includes(uf)))await reopenGeographicCandidates(connection);
-      if(JSON.stringify(before.states)!==JSON.stringify(settings.states)||JSON.stringify(before.segments)!==JSON.stringify(settings.segments))await connection.execute('UPDATE prospecting_auto_runtime SET query_cursor=0,provider_retry_at=NULL,provider_failures=0 WHERE id=1');
+      if(JSON.stringify(before.states)!==JSON.stringify(settings.states)||JSON.stringify(before.segments)!==JSON.stringify(settings.segments)||JSON.stringify(before.cnaes)!==JSON.stringify(settings.cnaes))await connection.execute('UPDATE prospecting_auto_runtime SET query_cursor=0,provider_retry_at=NULL,provider_failures=0 WHERE id=1');
       await refreshClientStatuses(connection);
     });res.json({ok:true,settings,revision:settingsRevision(settings)});
   }catch(e){if(e.status===409||e.status===422)return res.status(e.status).json({error:e.message});next(e);}

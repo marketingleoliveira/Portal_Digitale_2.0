@@ -1,5 +1,5 @@
 import {isOutsideProfileCnpj} from './prospecting-lost-filter.mjs';
-import {DEFAULT_SETTINGS,getSettings,matchesRegion,STATES} from './digitale-ai-settings.mjs';
+import {DEFAULT_SETTINGS,getSettings,matchesRegion,matchesCnae,STATES} from './digitale-ai-settings.mjs';
 import crypto from 'node:crypto';
 import {selectSdr} from './prospecting-assignment.mjs';
 import {OWNER,windowAt,sqlDate,quota} from './prospecting-policy.mjs';
@@ -147,6 +147,7 @@ export async function deliverVerified(db,p,candidateId=null,{clock=()=>new Date(
     if(Number(lock.acquired)!==1)throw Error('delivery_lock_timeout');locked=true;
     await connection.beginTransaction();
     const settings=await getSettings(connection);
+    if(!matchesCnae(p.registry,settings))throw Error('outside_target_cnae');
     if(!settings.states.includes(p.registry.uf))throw Error('outside_target_state');
     // UF valida ja foi verificada; nao restringir estado.
     if(!settings.enabled){await connection.rollback();return {ok:true,created:false,deferred:true,reason:'prospecting_paused'};}

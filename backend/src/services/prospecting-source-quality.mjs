@@ -25,7 +25,9 @@ const production=/confec[cç][aãõo]|fabricantes?\s+(?:de|em)|f[aá]brica\s+(?:
 const directory=/consulta\s+(?:de\s+)?cnpj|consultar\s+cnpj|guia\s+(?:comercial|de empresas)|lista(?:gem)?\s+de\s+(?:empresas|fabricantes)|empresas\s+cadastradas|\d+\s+(?:f[aá]bricas|fornecedores|op[cç][oõ]es)/i;
 export function apparelSearchHint(title,content) {
   const text=plain(title+' '+content);
-  return apparel.test(text)&&!directory.test(text);
+  // O resumo só indica uma página a visitar. A produção de vestuário continua
+  // sendo comprovada no site e no cadastro; títulos de marcas podem ser curtos.
+  return (apparel.test(text)||/confec[cç][aãõo]|alfaiataria|private\s+label/i.test(text))&&!directory.test(text);
 }
 export function manufacturerEvidence(title,content) {
   const text=plain(title+' '+content);
