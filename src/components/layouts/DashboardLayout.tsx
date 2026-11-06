@@ -84,6 +84,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   // Time clock reminder alerts
   useTimeClockReminder();
@@ -117,6 +118,90 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       : navItems.filter((item) => item.roles.includes("vendedor")) // Default to minimal access
   ).filter(isVisible);
 
+
+
+  // Agrupamento visual. Rotas, funções e permissões permanecem em navigation.ts.
+  const groupDefinitions = [
+    {
+      label: "Geral",
+      names: [
+        "Ponto", "Reunião", "Reserva de Salas", "Localizar",
+        "Notificações", "FAQ",
+      ],
+    },
+    {
+      label: "Comercial",
+      names: [
+        "Metas", "IA DIGITALE", "Agendor", "CRM",
+        "Atendimento EAD", "Gravações", "Categorias",
+        "Tabelas de Preços", "Materiais Comerciais",
+      ],
+    },
+    {
+      label: "Criação",
+      names: ["Material Criação"],
+    },
+    {
+      label: "Marketing",
+      names: ["Marketing"],
+    },
+    {
+      label: "Financeiro",
+      names: ["Reembolso", "Financeiro"],
+    },
+    {
+      label: "Gestão e Administração",
+      names: [
+        "Usuários", "Equipe", "Inativos", "Relatórios", "Atualizações",
+        "Configurações ERP",
+      ],
+    },
+  ];
+
+  const standaloneLabels = [
+    "Dashboard",
+    "Arquivos",
+    "Arquivos Recuperados",
+    "Solicitar Ajuda",
+  ];
+
+  const menuGroups: { label: string | null; items: NavItem[] }[] = [];
+
+  const dashboard = filteredNavItems.filter(
+    (item) => item.label === "Dashboard"
+  );
+  if (dashboard.length) {
+    menuGroups.push({ label: null, items: dashboard });
+  }
+
+  groupDefinitions.forEach((group) => {
+    const items = filteredNavItems.filter((item) =>
+      group.names.includes(item.label)
+    );
+    if (items.length) {
+      menuGroups.push({ label: group.label, items });
+    }
+  });
+
+  const standalone = filteredNavItems.filter(
+    (item) =>
+      standaloneLabels.includes(item.label) &&
+      item.label !== "Dashboard"
+  );
+  if (standalone.length) {
+    menuGroups.push({ label: null, items: standalone });
+  }
+
+  // Preserva automaticamente módulos novos que ainda não tenham grupo.
+  const assigned = new Set(
+    menuGroups.flatMap((group) => group.items.map((item) => item.href))
+  );
+  const remaining = filteredNavItems.filter(
+    (item) => !assigned.has(item.href)
+  );
+  if (remaining.length) {
+    menuGroups.push({ label: null, items: remaining });
+  }
 
   const handleSignOut = async () => {
     await signOut();
@@ -154,7 +239,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             {/* Logo */}
             <div className="p-6 border-b border-sidebar-border">
               <div className="flex items-center gap-3">
-                <Logo variant="light" />
+                <a
+                  href="https://digitaletextil.com.br"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Acessar o site da Digitale Têxtil"
+                  aria-label="Acessar o site da Digitale Têxtil"
+                  className="inline-flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <Logo variant="light" />
+                </a>
                 <SustainabilityBadge />
               </div>
             </div>
@@ -166,7 +260,48 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   <Loader2 className="w-6 h-6 animate-spin text-sidebar-foreground/50" />
                 </div>
               ) : (
-                filteredNavItems.map((item) => {
+                menuGroups.map((group, groupIndex) => {
+                  const groupActive = group.items.some((entry) => {
+                    const entries = [entry, ...(entry.children || [])];
+                    return entries.some(
+                      (candidate) =>
+                        location.pathname === candidate.href ||
+                        location.pathname.startsWith(candidate.href + "/")
+                    );
+                  });
+
+                  const groupExpanded =
+                    group.label === null ||
+                    expandedGroups.includes(group.label) ||
+                    groupActive;
+
+                  return (
+                    <React.Fragment key={`${group.label || "avulsos"}-${groupIndex}`}>
+                      {group.label && (
+                        <button
+                          type="button"
+                          aria-expanded={groupExpanded}
+                          onClick={() =>
+                            setExpandedGroups((prev) =>
+                              prev.includes(group.label!)
+                                ? prev.filter((name) => name !== group.label)
+                                : [...prev, group.label!]
+                            )
+                          }
+                          className="w-full flex items-center justify-between px-2 py-2 mt-4 rounded-none bg-transparent hover:bg-transparent text-sidebar-foreground/85 border-b border-sidebar-border/40 transition-colors"
+                        >
+                          <span className="text-xs font-semibold uppercase tracking-wider">
+                            {group.label}
+                          </span>
+                          <ChevronDown
+                            className={cn(
+                              "w-4 h-4 transition-transform",
+                              groupExpanded && "rotate-180"
+                            )}
+                          />
+                        </button>
+                      )}
+                      {groupExpanded && group.items.map((item) => {
                   const visibleChildren = (item.children || []).filter(
                     (c) =>
                       (effectiveRoleForNav
@@ -204,7 +339,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                     return (
                       <Link
                         key={entry.href}
-                        to={entry.href}
+                        to={
+                          entry.href === "/crm-calendario" &&
+                          effectiveRoleForNav === "vendedor"
+                            ? "/crm-atendimento"
+                            : entry.href
+                        }
                         onClick={handleClick}
                         className={cn(
                           "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative",
@@ -271,6 +411,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                         </div>
                       )}
                     </div>
+                  );
+                      })}
+                    </React.Fragment>
                   );
                 })
               )}

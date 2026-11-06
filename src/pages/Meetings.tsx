@@ -438,7 +438,7 @@ export default function Meetings() {
 
               <Button
                 size="lg"
-                className="gap-2"
+                className="gap-2 bg-[#F59E0B] hover:bg-[#D97706] text-white hover:text-white border-transparent"
                 onClick={() =>
                   setCreateDialogOpen(
                     true

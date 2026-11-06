@@ -47,7 +47,7 @@ export default function CrmCalendario() {
               Clique em uma data para agendar manualmente uma reunião e atribuir a um vendedor
             </p>
           </div>
-          <Button onClick={() => setDialogOpen(true)} disabled={!selectedDate}>
+          <Button onClick={() => setDialogOpen(true)} disabled={!selectedDate} className="bg-[#F59E0B] hover:bg-[#D97706] text-white hover:text-white border-transparent">
             <CalendarPlus className="w-4 h-4 mr-2" />
             Nova reunião
           </Button>

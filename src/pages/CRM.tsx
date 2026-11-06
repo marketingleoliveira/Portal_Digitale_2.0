@@ -133,7 +133,7 @@ const CRM = () => {
                   Importar
                 </Button>
               )}
-              <Button onClick={() => setShowForm(true)} className="gap-2">
+              <Button onClick={() => setShowForm(true)} className="gap-2 bg-[#F59E0B] hover:bg-[#D97706] text-white hover:text-white border-transparent">
                 <Plus className="w-4 h-4" />
                 Novo Lead
               </Button>

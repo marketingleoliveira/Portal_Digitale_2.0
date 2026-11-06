@@ -914,7 +914,7 @@ const FileManagement: React.FC = () => {
                   Novo Link
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto overscroll-contain">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Globe className="w-5 h-5 text-cyan-600" />
@@ -1094,12 +1094,12 @@ const FileManagement: React.FC = () => {
             {/* Add File Button */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+                <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-[#F59E0B] hover:bg-[#D97706] text-white hover:text-white border-transparent">
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Arquivo
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto overscroll-contain">
               <DialogHeader>
                 <DialogTitle>Enviar Arquivo</DialogTitle>
                 <DialogDescription>
@@ -1548,7 +1548,7 @@ const FileManagement: React.FC = () => {
 
         {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto overscroll-contain">
             <DialogHeader>
               <DialogTitle>Editar Arquivo</DialogTitle>
               <DialogDescription>

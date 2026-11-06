@@ -62,7 +62,7 @@ const Marketing: React.FC = () => {
             <p className="text-muted-foreground">Visão geral das atividades de marketing</p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => setShowNewLead(true)} className="gap-2">
+            <Button onClick={() => setShowNewLead(true)} className="gap-2 bg-[#F59E0B] hover:bg-[#D97706] text-white hover:text-white border-transparent">
               <Plus className="w-4 h-4" />
               Novo Lead
             </Button>
