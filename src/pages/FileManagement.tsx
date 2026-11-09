@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import ScheduledFileActions, { ScheduledFilesPanel } from '@/components/ScheduledFileActions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,6 +91,7 @@ const FileManagement: React.FC = () => {
   const [fileToDelete, setFileToDelete] = useState<FileItem | null>(null);
   const [fileToEdit, setFileToEdit] = useState<FileItem | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [scheduledVersion, setScheduledVersion] = useState(0);
   const [updating, setUpdating] = useState(false);
   
   // Batch selection state
@@ -1291,28 +1293,29 @@ const FileManagement: React.FC = () => {
                   </div>
                 )}
 
-                <Button
-                  className="w-full" 
-                  onClick={handleUpload}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Enviando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Enviar Arquivo
-                    </>
-                  )}
-                </Button>
+                <ScheduledFileActions
+                  files={selectedFiles}
+                  form={formData}
+                  categoryName={
+                    formData.category_id
+                      ? getCategoryName(formData.category_id)
+                      : ''
+                  }
+                  uploading={uploading}
+                  onSend={handleUpload}
+                  onScheduled={() => {
+                    setDialogOpen(false);
+                    resetForm();
+                    setScheduledVersion(value => value + 1);
+                  }}
+                />
               </div>
             </DialogContent>
           </Dialog>
           </div>
         </div>
+
+        <ScheduledFilesPanel refreshKey={scheduledVersion} />
 
         {/* Search and Filter */}
         <Card>

@@ -19,15 +19,10 @@ const router =
 
 const PUBLIC_READ_TABLES = new Set([
   "meetings",
-  "meeting_messages",
-  "meeting_participants",
   "development_updates"
 ]);
 
-const PUBLIC_WRITE_TABLES = new Set([
-  "meeting_messages",
-  "meeting_participants"
-]);
+const PUBLIC_WRITE_TABLES = new Set([]);
 
 function validIdentifier(value) {
   return /^[A-Za-z_][A-Za-z0-9_]{0,63}$/

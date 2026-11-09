@@ -876,6 +876,7 @@ const auth = {
       if (session) {
         const refreshed = {
           ...session,
+          access_token: result.token || session.access_token,
           user: {
             ...session.user,
             ...(result.user || {})

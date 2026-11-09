@@ -8,6 +8,7 @@ import {windowAt,nextRun,sqlDate,quota} from '../services/prospecting-policy.mjs
 import {verifyCandidate,domainOf,excludedDomain} from '../services/prospecting-auto-verification.mjs';
 import {deliverVerified,counts,deliveryQuota} from '../services/prospecting-auto-delivery.mjs';
 import {discoverCandidates} from '../services/prospecting-discovery.mjs';
+import {approveOnlyIA} from '../services/prospecting-ia-approved.mjs';
 import {storeProspectingEmails} from '../services/prospecting-email-contacts.mjs';
 import {verificationReporter} from '../services/prospecting-telemetry.mjs';
 import {observeCommercialProfile} from '../services/prospecting-commercial-observer-v2.mjs';
@@ -35,7 +36,7 @@ async function cycle() {
     const [[available]]=await db.execute("SELECT COUNT(*) total FROM prospecting_auto_candidates WHERE status='discovered'");
     if((!externalBatchId||Number(available.total)<30)&&(!runtime.provider_retry_at||new Date(runtime.provider_retry_at)<=new Date())) {
       try {
-        for(let searchIndex=0;searchIndex<(externalBatchId?15:5)&&!stopping&&windowAt().open;searchIndex++){found+=await discover(runtime.query_cursor+searchIndex,id);await db.execute('UPDATE prospecting_auto_runs SET found=? WHERE id=?',[found,id]);await sleep(2000);}
+        for(let searchIndex=0;searchIndex<(externalBatchId?15:5)&&!stopping&&windowAt().open;searchIndex++){found+=await discover(runtime.query_cursor+searchIndex,id);await db.execute('UPDATE prospecting_auto_runs SET found=? WHERE id=?',[found,id]);await sleep(12000);}
         await db.execute('UPDATE prospecting_auto_runtime SET provider_failures=0,provider_retry_at=NULL WHERE id=1');
       }
       catch(e) {
@@ -108,7 +109,7 @@ async function cycle() {
         }});
         await db.execute("UPDATE prospecting_auto_candidates SET status='verified',proof=?,verified_at=UTC_TIMESTAMP(6),updated_at=UTC_TIMESTAMP(6) WHERE id=?",[JSON.stringify(proof),candidate.id]);
         await reporter.progress('delivery',{cnpj:proof.cnpj,company:proof.company,phone:proof.phone,uf:proof.registry.uf});
-        const result=await deliverVerified(db,proof,candidate.id,{externalBatchId});
+        const result=await approveOnlyIA(db,proof,candidate.id);
         if(result.created){if(result.approved)approved++;else delivered++;}
         else await db.execute('UPDATE prospecting_auto_candidates SET status=?,reason=?,next_attempt_at=?,updated_at=UTC_TIMESTAMP(6) WHERE id=?',[result.duplicate?'duplicate':'verified',result.reason||null,result.duplicate?null:sqlDate(nextRun()),candidate.id]);
         if(result.created)console.log(JSON.stringify({event:result.approved?'verified_approval':'verified_delivery',cnpj:proof.cnpj,deal_id:result.deal_id,owner_id:result.owner_id}));

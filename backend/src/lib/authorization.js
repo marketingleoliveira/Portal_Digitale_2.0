@@ -237,9 +237,8 @@ export async function canReadRow(user, table, row) {
     }
 
     return (
-      table === "meeting_messages" ||
-      table === "meeting_participants" ||
-      (table === "development_updates" && Boolean(row.is_published))
+      table === "development_updates" &&
+      Boolean(row.is_published)
     );
   }
 
@@ -471,10 +470,7 @@ async function canMutateTicketChild(user, row) {
 
 export async function canInsertRow(user, table, row) {
   if (!user) {
-    return (
-      table === "meeting_messages" ||
-      table === "meeting_participants"
-    );
+    return false;
   }
 
   if (isTechnical(user)) return true;

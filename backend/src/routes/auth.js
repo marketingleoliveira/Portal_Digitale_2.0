@@ -6,6 +6,49 @@ import { requireAuth, signUser } from "../lib/auth.js";
 
 const router = express.Router();
 
+// Controle de tentativas somente para contas cadastradas
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const loginAttempts = new Map();
+
+function getLoginAttempt(email) {
+  const entry = loginAttempts.get(email);
+
+  if (entry && Date.now() >= entry.expiresAt) {
+    loginAttempts.delete(email);
+    return null;
+  }
+
+  return entry || null;
+}
+
+function recordLoginFailure(email) {
+  const current = getLoginAttempt(email);
+  const count = (current?.count || 0) + 1;
+
+  const expiresAt =
+    current?.expiresAt || Date.now() + LOGIN_WINDOW_MS;
+
+  loginAttempts.set(email, { count, expiresAt });
+
+  return {
+    remaining: Math.max(0, LOGIN_MAX_ATTEMPTS - count),
+    blocked: count >= LOGIN_MAX_ATTEMPTS
+  };
+}
+
+const loginCleanup = setInterval(() => {
+  for (const email of loginAttempts.keys()) {
+    getLoginAttempt(email);
+  }
+}, LOGIN_WINDOW_MS);
+
+loginCleanup.unref();
+
+
+
+
+
 function publicUser(row) {
   return {
     id: row.id,
@@ -19,6 +62,7 @@ function publicUser(row) {
   };
 }
 
+
 router.post("/login", async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "");
@@ -27,14 +71,65 @@ router.post("/login", async (req, res) => {
     "SELECT * FROM system_users WHERE email=? LIMIT 1",
     [email]
   );
+
   const user = rows[0];
 
+  // E-mail inexistente: mensagem genérica e sem contador
   if (!user || user.disabled || !user.password_hash) {
-    return res.status(401).json({ error: { message: "Invalid login credentials" } });
+    return res.status(401).json({
+      error: {
+        message: "E-mail ou senha incorretos. Verifique seus dados."
+      }
+    });
   }
-  const valid = await bcrypt.compare(password, user.password_hash);
+
+  // Conta cadastrada já bloqueada
+  const attempt = getLoginAttempt(email);
+
+  if (attempt && attempt.count >= LOGIN_MAX_ATTEMPTS) {
+    const minutes = Math.max(
+      1,
+      Math.ceil((attempt.expiresAt - Date.now()) / 60000)
+    );
+
+    return res.status(429).json({
+      error: {
+        message:
+          "Limite de tentativas atingido. Tente novamente em " +
+          minutes + " minuto(s)."
+      }
+    });
+  }
+
+  const valid = await bcrypt.compare(
+    password,
+    user.password_hash
+  );
+
   if (!valid) {
-    return res.status(401).json({ error: { message: "Invalid login credentials" } });
+    const result = recordLoginFailure(email);
+
+    if (result.blocked) {
+      return res.status(429).json({
+        error: {
+          message:
+            "Limite de tentativas atingido. " +
+            "Tente novamente em 15 minutos."
+        }
+      });
+    }
+
+    const remaining = result.remaining;
+
+    return res.status(401).json({
+      error: {
+        message:
+          remaining === 1
+            ? "Senha incorreta. Resta 1 tentativa."
+            : "Senha incorreta. Restam " +
+              remaining + " tentativas."
+      }
+    });
   }
 
   const [profiles] = await db.execute(
@@ -48,15 +143,23 @@ router.post("/login", async (req, res) => {
   ) {
     return res.status(403).json({
       error: {
-        message:
-          "Conta aguardando aprovação do administrador"
+        message: "Conta aguardando aprovação do administrador"
       }
     });
   }
 
+  // Login realizado com sucesso
+  loginAttempts.delete(email);
+
   const token = signUser(user);
-  return res.json({ token, user: publicUser(user) });
+
+  return res.json({
+    token,
+    user: publicUser(user)
+  });
 });
+
+
 
 router.get("/me", requireAuth, async (req, res) => {
   const [rows] = await db.execute(
@@ -123,11 +226,23 @@ router.post("/update-password", requireAuth, async (req, res) => {
 
   const hash = await bcrypt.hash(secret, 12);
   await db.execute(
-    "UPDATE system_users SET password_hash=?,updated_at=NOW(6) WHERE id=?",
+    "UPDATE system_users SET password_hash=?,token_version=COALESCE(token_version,0)+1,updated_at=NOW(6) WHERE id=?",
     [hash, req.user.id]
   );
 
+  const [versions] = await db.execute(
+    "SELECT token_version FROM system_users WHERE id=? LIMIT 1",
+    [req.user.id]
+  );
+
+  const token = signUser({
+    id: req.user.id,
+    email: req.user.email,
+    token_version: versions[0].token_version
+  });
+
   return res.json({
+    token,
     user: {
       id: req.user.id,
       email: req.user.email,

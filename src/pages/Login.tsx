@@ -57,13 +57,21 @@ const Login: React.FC = () => {
       const { error } = await signIn(email, password);
       
       if (error) {
-        let message = 'Erro ao fazer login';
-        if (error.message.includes('Invalid login credentials')) {
-          message = 'Email ou senha incorretos';
-        } else if (error.message.includes('Email not confirmed')) {
-          message = 'Confirme seu email antes de fazer login';
+        const detail = String(error.message || '');
+
+        let message = 'E-mail ou senha incorretos. Verifique seus dados.';
+
+        if (
+          detail.includes('Senha incorreta') ||
+          detail.includes('Limite de tentativas atingido') ||
+          detail.includes('E-mail ou senha incorretos') ||
+          detail.includes('Conta aguardando aprovação')
+        ) {
+          message = detail;
+        } else if (detail.includes('Email not confirmed')) {
+          message = 'Confirme seu e-mail antes de fazer login';
         }
-        
+
         toast({
           title: 'Erro',
           description: message,

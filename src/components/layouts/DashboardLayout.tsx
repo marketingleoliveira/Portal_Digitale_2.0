@@ -109,6 +109,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const isVisible = (item: NavItem) => {
     if (item.allowedEmails && !item.allowedEmails.includes(user?.email?.trim().toLowerCase() || "")) return false;
     // Dev-only settings area is restricted to the actual "dev" role.
+    if (item.href === "/treinamentos") return realRole === "dev";
     if (item.href === "/configuracoes") return user?.role === "dev";
     return !isMenuHidden(item.href, user?.role);
   };
@@ -116,7 +117,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     effectiveRoleForNav
       ? navItems.filter((item) => item.roles.includes(effectiveRoleForNav))
       : navItems.filter((item) => item.roles.includes("vendedor")) // Default to minimal access
-  ).filter(isVisible);
+  ).filter(isVisible).filter(item => item.href !== "/treinamentos");
 
 
 
@@ -182,6 +183,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       menuGroups.push({ label: group.label, items });
     }
   });
+
+
+  // Treinamentos: grupo independente, vazio e exclusivo DEV.
+  if (realRole === "dev") {
+    menuGroups.push({
+      label: "Treinamentos",
+      items: [],
+    });
+  }
 
   const standalone = filteredNavItems.filter(
     (item) =>

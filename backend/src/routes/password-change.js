@@ -3,10 +3,11 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db } from "../database.js";
 import { config } from "../config.js";
+import { requireAuth } from "../lib/auth.js";
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   try {
     const authHeader =
       String(req.headers.authorization || "");
@@ -47,7 +48,7 @@ router.post("/", async (req, res) => {
           )
         : null;
 
-    if (!userId) {
+    if (!userId || String(userId) !== String(req.user.id)) {
       return res.status(401).json({
         error: {
           message: "Usuário não identificado."
@@ -113,6 +114,7 @@ router.post("/", async (req, res) => {
         UPDATE system_users
         SET
           password_hash = ?,
+          token_version = COALESCE(token_version, 0) + 1,
           updated_at = NOW(6)
         WHERE id = ?
       `,

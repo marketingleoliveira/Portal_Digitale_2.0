@@ -13,6 +13,7 @@ import MandatoryLocationGate from "@/components/MandatoryLocationGate";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
 import Categories from "./pages/Categories";
@@ -95,6 +96,7 @@ const App = () => (
                   <Route path="/login" element={<Login />} />
                   
                   {/* Protected Routes */}
+
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/produtos" element={<ProtectedRoute><Products /></ProtectedRoute>} />
                   <Route path="/produtos/:id" element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />

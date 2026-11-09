@@ -31,6 +31,7 @@ import {
   SlidersHorizontal,
   Settings,
   ArchiveRestore,
+  GraduationCap,
 } from "lucide-react";
 import { AppRole } from "@/types/auth";
 
@@ -48,6 +49,7 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
+
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro", "diretoria"], showNewBadge: true, locked: true },
   { label: "Ponto", href: "/ponto", icon: Clock, roles: ["dev", "admin", "gerente", "vendedor", "diretoria"] },
   { label: "Reunião", href: "/reunioes", icon: Video, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro", "diretoria"] },

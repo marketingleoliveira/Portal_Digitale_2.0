@@ -25,7 +25,7 @@ export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
   const term=commercialTerms[variant%commercialTerms.length];
   const page=1+Math.floor(variant/commercialTerms.length)%3;
   const identityHint=settings.cnaes?.length&&regionalCursor%3===0?' CNPJ':'';
-  return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]} ${uf} site oficial${identityHint}`,pageno:page,engines:cursor%2===0?'yahoo':'duckduckgo'};
+  return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]} ${uf}${identityHint}`,pageno:1,engines:'yandex'};
 }
 
 // DIGITALE_REGISTRY_DIRECTORY_GUARD_V12
@@ -74,11 +74,63 @@ export function discoveryResult(result) {
     /confec[cç][aã]o|fabricante|f[aá]brica de roupas|produ[cç][aã]o pr[oó]pria|private.label|moda fitness|moda feminina|moda masculina|moda infantil|ind[uú]stria do vestu[aá]rio/i
       .test(searchText);
 
-  if (blockedProspectingSource(result?.url)) return null;
+  
+  // DIGITALE_FACTORY_DISCOVERY_GUARD_V1
+  // O resumo deve indicar atividade de fabricação.
+  // A confirmação definitiva ocorre no site e no CNPJ.
+  const factoryEvidence =
+    /confec[cç][aã]o|confec[cç][oõ]es|fabricante(?:s)?\s+(?:de|em)|f[aá]brica\s+(?:de|da|pr[oó]pria)|fabrica[cç][aã]o|produ[cç][aã]o\s+pr[oó]pria|fabricamos|produzimos|private[\s-]*label|fac[cç][aã]o\s+(?:de|para)|ind[uú]stria\s+(?:de|do)\s+(?:vestu[aá]rio|roupas|confec[cç])/i;
+
+  const clothingEvidence =
+    /moda|fitness|vestu[aá]rio|roupas?|lingerie|uniformes?|camisetas?|cal[cç]as?|bermudas?|biqu[ií]nis?|malharia|alfaiataria|jeans|moda praia|beachwear/i;
+
+  if (
+    !factoryEvidence.test(searchText) ||
+    !clothingEvidence.test(searchText)
+  ) return null;
+
+if (blockedProspectingSource(result?.url)) return null;
+  // Evita lojas internacionais incompatíveis com o CNAE brasileiro.
+  const blockedForeignRetailers = [
+    'uniqlo.com',
+    'mango.com',
+    'privalia.com',
+    'lefties.com',
+    'zara.com',
+    'shein.com',
+    'hm.com'
+  ];
+
+  try {
+    const hostname = new URL(result.url)
+      .hostname.toLowerCase().replace(/^www\./, '');
+
+    if (blockedForeignRetailers.some(domain =>
+      hostname === domain ||
+      hostname.endsWith('.' + domain)
+    )) return null;
+  } catch {
+    return null;
+  }
+
+  // Mantém apenas resultados com indícios do setor de vestuário.
   if (
     !apparelSearchHint(result?.title || '', result?.content || '') &&
     !relevantCommercialEvidence
   ) return null;
+
+  // Empresas portuguesas não atendem ao cadastro brasileiro exigido.
+  try {
+    const host = new URL(result.url).hostname.toLowerCase();
+    if (host.endsWith('.pt')) return null;
+  } catch {
+    return null;
+  }
+
+  // A pesquisa identifica candidatos potenciais.
+  // A comprovação de fabricante ocorre na análise do site,
+  // não exclusivamente no título do resultado de busca.
+  // Permanecem os bloqueios de fontes e domínios inadequados.
   if (blockedRegistryDirectoryV12(result?.url)) {
     return null;
   }
@@ -295,7 +347,7 @@ async function searchWithFallback(endpoint,fetchSearch) {
   const first=endpoint.searchParams.get('engines');
   let lastError,empty;
   const degraded=[];
-  for(const engine of [first,first==='yahoo'?'duckduckgo':'yahoo']) {
+  for(const engine of [first]) {
     const url=new URL(endpoint);url.searchParams.set('engines',engine);
     try {
       const response=await fetchSearch(url,{signal:AbortSignal.timeout(12000)});
@@ -334,7 +386,7 @@ export async function discoverCandidates(db,cursor,{fetchSearch=fetch,fetchSite=
     const broadened=new URL(endpoint);
     broadened.searchParams.set('q',plan.q+' '+[...new Set(known)].slice(0,8).map(domain=>'-site:'+domain).join(' '));
     broadened.searchParams.set('pageno','1');
-    broadened.searchParams.set('engines',plan.engines==='yahoo'?'duckduckgo':'yahoo');
+    broadened.searchParams.set('engines','yandex');
     try {
       const retry=await fetchSearch(broadened,{signal:AbortSignal.timeout(12000)});
       if(retry.ok){const extra=await retry.json();if(Array.isArray(extra.results)){
