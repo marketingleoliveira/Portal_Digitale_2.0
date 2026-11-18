@@ -8,6 +8,8 @@ import cors from "cors";
 import { db } from "./database.js";
 import { config } from "./config.js";
 import authRoutes from "./routes/auth.js";
+import { requireAuth } from "./lib/auth.js";
+import { readFile } from "node:fs/promises";
 
 import meetingRoutes from "./routes/meetings.js";
 import recordingRoutes from "./routes/recordings.js";
@@ -100,6 +102,36 @@ app.get("/api/health", async (_req, res) => {
 
 app.use("/api/auth/password", passwordChangeRoutes);
 app.use("/api/auth", authRoutes);
+
+// Estado do backup: acesso autenticado, nunca publica arquivos do servidor.
+app.get("/api/admin/backup-status", requireAuth, async (req, res) => {
+  const allowedEmails = new Set([
+    "marketing@digitaletextil.com.br",
+    "marketing2@digitaletextil.com.br",
+  ]);
+  const email = String(req.user?.email || "").trim().toLowerCase();
+  if (!allowedEmails.has(email) && req.user?.role !== "dev") {
+    return res.status(403).json({ error: "Acesso negado" });
+  }
+  try {
+    const raw = await readFile(
+      "/var/lib/portal-github-backup/status.json", "utf8"
+    );
+    const status = JSON.parse(raw);
+    res.setHeader("Cache-Control", "no-store");
+    return res.json({
+      repository: status.repository,
+      lastAttemptAt: status.lastAttemptAt || null,
+      lastSuccessAt: status.lastSuccessAt || null,
+      lastRunSuccessful: status.lastRunSuccessful === true,
+      commit: status.commit || null,
+      error: status.error || null,
+      schedule: "Todos os dias às 18h - horário de Brasília",
+    });
+  } catch {
+    return res.status(503).json({ error: "Status indisponível" });
+  }
+});
 
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/recordings", recordingRoutes);

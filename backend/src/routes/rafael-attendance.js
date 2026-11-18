@@ -66,10 +66,61 @@ router.get('/',requireAuth,isDev,async(req,res)=>{
   res.json({calls,totals});
  }catch(e){console.error('RAFAEL_ATTENDANCE_LIST',e);res.status(500).json({error:'Falha ao consultar atendimentos'});}
 });
+// Exclusão em lote atômica: somente Desenvolvedor e apenas IDs específicos.
+// Excluir a ligação também remove seus turnos pelo FK ON DELETE CASCADE.
+router.post('/batch-delete',requireAuth,isDev,async(req,res)=>{
+ const input=req.body?.ids;
+ if(!Array.isArray(input)||input.length<1||input.length>200||
+    input.some(id=>typeof id!=='string'||!/^[a-zA-Z0-9_-]{12,90}$/.test(id))||
+    new Set(input).size!==input.length){
+  return res.status(400).json({error:'Selecione de 1 a 200 ligações válidas, sem repetições'});
+ }
+ let conn;
+ try{
+  conn=await db.getConnection();
+  await conn.beginTransaction();
+  const marks=input.map(()=>'?').join(',');
+  const [existing]=await conn.execute(
+   `SELECT id FROM rafael_attendance_calls WHERE id IN (${marks}) FOR UPDATE`,input
+  );
+  if(existing.length!==input.length){
+   await conn.rollback();
+   return res.status(409).json({error:'Algumas ligações já não existem. Atualize a lista antes de excluir.'});
+  }
+  const [result]=await conn.execute(
+   `DELETE FROM rafael_attendance_calls WHERE id IN (${marks})`,input
+  );
+  if(result.affectedRows!==input.length)throw new Error('incomplete_batch_delete');
+  await conn.commit();
+  return res.json({ok:true,deletedCount:input.length,deletedIds:input});
+ }catch(error){
+  if(conn)await conn.rollback().catch(()=>{});
+  console.error('RAFAEL_ATTENDANCE_BATCH_DELETE',error);
+  return res.status(500).json({error:'Não foi possível excluir as ligações selecionadas'});
+ }finally{
+  if(conn)conn.release();
+ }
+});
+
 router.get('/:id',requireAuth,isDev,async(req,res)=>{
  const id=safe(req.params.id,90);if(!/^[a-zA-Z0-9_-]{12,90}$/.test(id))return res.status(400).json({error:'id_invalido'});
  try{const [[call]]=await db.execute('SELECT * FROM rafael_attendance_calls WHERE id=?',[id]);if(!call)return res.status(404).json({error:'nao_encontrado'});
  const [turns]=await db.execute('SELECT turn_number,speaker,text,created_at FROM rafael_attendance_turns WHERE call_id=? ORDER BY turn_number,CASE speaker WHEN \'cliente\' THEN 0 ELSE 1 END',[id]);res.json({call,turns});}
  catch(e){console.error('RAFAEL_ATTENDANCE_DETAIL',e);res.status(500).json({error:'Falha ao consultar histórico'});}
+});
+
+// Exclusão individual e definitiva: só Desenvolvedor. As falas vinculadas
+// são removidas pelo FK ON DELETE CASCADE de rafael_attendance_turns.
+router.delete('/:id',requireAuth,isDev,async(req,res)=>{
+ const id=safe(req.params.id,90);
+ if(!/^[a-zA-Z0-9_-]{12,90}$/.test(id))return res.status(400).json({error:'id_invalido'});
+ try{
+  const [result]=await db.execute('DELETE FROM rafael_attendance_calls WHERE id=?',[id]);
+  if(!result.affectedRows)return res.status(404).json({error:'Ligação não encontrada ou já excluída'});
+  return res.json({ok:true,deletedId:id});
+ }catch(error){
+  console.error('RAFAEL_ATTENDANCE_DELETE',error);
+  return res.status(500).json({error:'Não foi possível excluir a ligação'});
+ }
 });
 export default router;

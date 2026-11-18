@@ -35,23 +35,28 @@ function formatDate(value?: string | null) {
 }
 
 export default function PortalBackupStatusCorner() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const email = user?.email?.trim().toLowerCase();
-  const authorized = Boolean(email && allowed.has(email));
+  const authorized = Boolean(
+    (email && allowed.has(email)) || user?.role === "dev"
+  );
 
   const [data, setData] = React.useState<BackupStatus | null>(null);
   const [error, setError] = React.useState(false);
 
   React.useEffect(() => {
-    if (!authorized) return;
+    if (!authorized || !session?.access_token) return;
 
     let mounted = true;
 
     const refresh = async () => {
       try {
         const response = await fetch(
-          "/backup-status.json?t=" + Date.now(),
-          { cache: "no-store" }
+          "/api/admin/backup-status?t=" + Date.now(),
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }
         );
 
         if (!response.ok) throw new Error("HTTP");
@@ -81,7 +86,7 @@ export default function PortalBackupStatusCorner() {
       mounted = false;
       window.clearInterval(timer);
     };
-  }, [authorized]);
+  }, [authorized, session?.access_token]);
 
   if (!authorized) return null;
 
