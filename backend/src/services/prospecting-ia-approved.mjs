@@ -1,3 +1,4 @@
+import {getSettings,matchesRegion} from './digitale-ai-settings.mjs';
 
 import crypto from 'node:crypto';
 import {
@@ -6,6 +7,7 @@ import {
 
 function cnaeValues(registry = {}) {
   return [
+    registry.primary_cnae,
     registry.cnae,
     registry.cnae_principal,
     registry.cnae_fiscal,
@@ -37,14 +39,17 @@ function businessEmail(proof) {
 export async function approveOnlyIA(db, proof, candidateId) {
   const registry = proof.registry || {};
 
+  const settings=await getSettings(db);
+  if(!matchesRegion(registry,settings))return {created:false,approved:false,duplicate:false,reason:'outside_target_state'};
   const decision = evaluateApproval({
+    razao_social: registry.legal_name || registry.razao_social,
     cnpj: proof.cnpj || registry.cnpj,
     phone: proof.phone || proof.telefone || registry.telefone,
     email: businessEmail(proof),
     cnaes: cnaeValues(registry),
     mei: registry.mei_status ?? registry.mei,
     situacao_cadastral: registry.situacao_cadastral
-  });
+  },settings.cnaes?.length?settings.cnaes:undefined);
 
   if (!decision.approved) {
     return {

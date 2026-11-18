@@ -1,3 +1,4 @@
+import {hasConfeccaoLegalName} from './prospecting-approval-policy.mjs';
 export const STATES = {AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
 import {createHash} from 'node:crypto';
 export const DEFAULT_SETTINGS = Object.freeze({enabled:true,inactivity_months:3,hourly_target:20,daily_target:160,states:Object.freeze(Object.keys(STATES).sort()),segments:Object.freeze(['moda fitness','moda praia','moda esportiva','moda íntima','vestuário','lingerie','uniformes'])});
@@ -25,7 +26,7 @@ export function validateSettings(input) {
 // CNAE exato da atividade principal, sem aceitar um grupo genérico ou atividade secundária.
 export function matchesCnae(registry,settings=DEFAULT_SETTINGS) {
   const required=settings.cnaes||[];
-  return !required.length||required.includes(String(registry?.cnae_fiscal??registry?.primary_cnae??'').replace(/\D/g,''));
+  return hasConfeccaoLegalName(registry?.razao_social || registry?.legal_name)||!required.length||required.includes(String(registry?.cnae_fiscal??registry?.primary_cnae??'').replace(/\D/g,''));
 }
 export async function getSettings(connection) {
   const [rows]=await connection.execute('SELECT settings FROM digitale_ai_settings WHERE id=1');

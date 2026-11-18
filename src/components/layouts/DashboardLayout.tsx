@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotificationContext } from "@/contexts/NotificationContext";
@@ -79,8 +79,11 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user, signOut, loading, realRole, viewAsRole, setViewAsRole } = useAuth();
+  const { user, session, signOut, loading, realRole, viewAsRole, setViewAsRole } = useAuth();
   const location = useLocation();
+  const [hasTraining,setHasTraining]=useState(false);
+  const trainingToken=(session as any)?.access_token||(session as any)?.accessToken||'';
+  useEffect(()=>{let live=true;setHasTraining(false);if(!trainingToken||realRole==='dev')return;fetch('/api/training-v2/available',{headers:{Authorization:'Bearer '+trainingToken}}).then(r=>r.ok?r.json():null).then(j=>{if(live)setHasTraining(Array.isArray(j?.data)&&j.data.length>0);}).catch(()=>{});return()=>{live=false;};},[trainingToken,realRole,location.pathname]);
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -109,7 +112,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const isVisible = (item: NavItem) => {
     if (item.allowedEmails && !item.allowedEmails.includes(user?.email?.trim().toLowerCase() || "")) return false;
     // Dev-only settings area is restricted to the actual "dev" role.
-    if (item.href === "/treinamentos") return realRole === "dev";
+    if (item.href === "/treinamentos") return realRole === "dev" || hasTraining;
+    if (item.href.startsWith("/treinamentos/")) return realRole === "dev";
+    if (item.href === "/atendimento-dev") return realRole === "dev";
     if (item.href === "/configuracoes") return user?.role === "dev";
     return !isMenuHidden(item.href, user?.role);
   };
@@ -117,7 +122,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     effectiveRoleForNav
       ? navItems.filter((item) => item.roles.includes(effectiveRoleForNav))
       : navItems.filter((item) => item.roles.includes("vendedor")) // Default to minimal access
-  ).filter(isVisible).filter(item => item.href !== "/treinamentos");
+  ).filter(isVisible);
 
 
 
@@ -134,7 +139,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       label: "Comercial",
       names: [
         "Metas", "IA DIGITALE", "Agendor", "CRM",
-        "Atendimento EAD", "Gravações", "Categorias",
+        "Atendimento EAD", "Treinamento", "Gravações", "Categorias",
         "Tabelas de Preços", "Materiais Comerciais",
       ],
     },
@@ -185,11 +190,21 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   });
 
 
-  // Treinamentos: grupo independente, vazio e exclusivo DEV.
+  // Atendimento técnico: módulo independente, somente para o cargo real Desenvolvedor.
   if (realRole === "dev") {
+    const attendance = filteredNavItems.filter(item => item.href === "/atendimento-dev");
+    if (attendance.length) menuGroups.push({ label: "Atendimento", items: attendance });
+  }
+
+  // Treinamentos: grupo independente e exclusivo do perfil real DEV.
+  if (realRole === "dev" || hasTraining) {
     menuGroups.push({
       label: "Treinamentos",
-      items: [],
+      items: filteredNavItems.filter(item =>
+        item.href === "/treinamentos" ||
+        item.href === "/treinamentos/gerenciamento" ||
+        item.href === "/treinamentos/progresso"
+      ),
     });
   }
 

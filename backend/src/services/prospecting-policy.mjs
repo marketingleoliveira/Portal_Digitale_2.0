@@ -15,7 +15,7 @@ export function windowAt(now = new Date()) {
   let low=now.getTime()-36*3600000,high=now.getTime();
   while(high-low>1){const middle=Math.floor((low+high)/2);if(localDate(middle)<date)low=middle;else high=middle;}
   const dayStart = new Date(high);
-  return {date, hour, open:hour >= 8 && hour < 18, hourStart:localHour, dayStart};
+  return {date, hour, open:true, hourStart:localHour, dayStart};
 }
 export const sqlDate = date => date.toISOString().slice(0,23).replace('T',' ');
 export function quota(hourCount, dayCount, now = new Date(), settings=DEFAULT_SETTINGS) {

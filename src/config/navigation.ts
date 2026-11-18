@@ -32,6 +32,7 @@ import {
   Settings,
   ArchiveRestore,
   GraduationCap,
+  Layers3,
 } from "lucide-react";
 import { AppRole } from "@/types/auth";
 
@@ -50,6 +51,12 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
 
+  // Módulo Treinamentos: exclusivo para o perfil real DEV.
+  { label: "Treinamentos", href: "/treinamentos", icon: GraduationCap, roles: ["dev","admin","gerente","vendedor","criacao","sdr","marketing","qualidade","financeiro","diretoria"] },
+  // Área técnica independente do atendimento comercial existente no CRM.
+  { label: "Atendimento", href: "/atendimento-dev", icon: Handshake, roles: ["dev"], locked: true },
+  { label: "Gerenciamento de Treinamentos", href: "/treinamentos/gerenciamento", icon: Layers3, roles: ["dev"] },
+  { label: "Progresso", href: "/treinamentos/progresso", icon: BarChart3, roles: ["dev"] },
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro", "diretoria"], showNewBadge: true, locked: true },
   { label: "Ponto", href: "/ponto", icon: Clock, roles: ["dev", "admin", "gerente", "vendedor", "diretoria"] },
   { label: "Reunião", href: "/reunioes", icon: Video, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro", "diretoria"] },
@@ -85,6 +92,13 @@ export const navItems: NavItem[] = [
     ],
   },
 
+  {
+    label: "Treinamento",
+    href: "/comercial/treinamento",
+    icon: GraduationCap,
+    roles: ["dev", "vendedor", "gerente", "admin", "diretoria"],
+    highlight: true,
+  }, // DIGITALE_COMERCIAL_TREINAMENTO_V1
   {
     label: "Atendimento EAD",
     href: "/crm",

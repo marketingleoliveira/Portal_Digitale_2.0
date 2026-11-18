@@ -1,3 +1,5 @@
+import {hasConfeccaoLegalName} from './prospecting-approval-policy.mjs';
+import {publishedCnpjs} from './prospecting-verification.mjs';
 import {plain} from './prospecting-verification.mjs';
 
 const blockedHosts = [
@@ -38,5 +40,7 @@ export function officialManufacturerPage(page) {
   const body=String(page.body||'');
   const title=plain(body.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'');
   if(/contabilidade|ag[eê]ncia\s+(?:digital|de marketing)|software|consulta\s+cnpj|guia\s+comercial/i.test(title))return false;
-  return manufacturerEvidence(title,plain(body).slice(0,120000));
+  const text=plain(body).slice(0,120000);
+  // Apenas indica um site candidato; a razão social oficial é conferida no cadastro.
+  return manufacturerEvidence(title,text)||(hasConfeccaoLegalName(title+' '+text)&&publishedCnpjs(text).length>0);
 }

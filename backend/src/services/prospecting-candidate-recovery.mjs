@@ -1,5 +1,5 @@
 // Uma única reavaliação após a correção do verificador, sem reabrir recusas comerciais.
-export const VERIFICATION_POLICY='cnae-principal-20261105-v2';
+export const VERIFICATION_POLICY='razao-social-20261117-v3';
 export function recoverableCandidate(row) {
   if(row?.status!=='rejected')return false;
   let proof;try{proof=typeof row.proof==='string'?JSON.parse(row.proof):row.proof;}catch{}
@@ -7,7 +7,7 @@ export function recoverableCandidate(row) {
   // O classificador antigo não reconhecia "CONFECÇÕES/CONFECCOES".
   // Somente nomes vindos de um site com produção já constatada podem voltar
   // à verificação completa; o CNAE e a identidade precisam passar novamente.
-  const oldClassifier=row.reason==='outside_textile_buyer_profile'&&proof?.discovery?.manufacturer_evidence===true;
+  const oldClassifier=['outside_textile_buyer_profile','outside_target_cnae','not_apparel_manufacturer'].includes(row.reason);
   return (technical||oldClassifier)&&proof?.verification_policy!==VERIFICATION_POLICY;
 }
 export async function recoverCandidate(db,row,official,evidence) {

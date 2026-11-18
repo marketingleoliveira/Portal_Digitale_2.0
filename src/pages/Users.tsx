@@ -67,7 +67,7 @@ interface UserWithRole extends Omit<UserProfile, 'region'> {
 }
 
 const Users: React.FC = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,11 +139,56 @@ const Users: React.FC = () => {
     return password;
   };
 
+
+  // DIGITALE_TRAINING_ADMIN_UNLOCK_V1
+  const handleUnlockTraining = async (
+    targetId: string,
+    targetName: string
+  ) => {
+    if (!window.confirm(
+      `Liberar o treinamento de ${targetName}?`
+    )) return;
+
+    try {
+      const token = (session as any)?.access_token ||
+        (session as any)?.token;
+
+      const response = await fetch(
+        `/api/training-activity-player-test/admin/unlock/${targetId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message || `HTTP ${response.status}`
+        );
+      }
+
+      toast({
+        title: 'Treinamento desbloqueado',
+        description: `${targetName} pode realizar uma nova tentativa.`
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Não foi possível desbloquear',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleResetPassword = async (userEmail: string, userName: string) => {
-    const DEFAULT_RESET_PASSWORD = generatePassword();
+    const temporaryPassword = generatePassword();
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { email: userEmail, password: DEFAULT_RESET_PASSWORD }
+        body: { email: userEmail, password: temporaryPassword }
       });
 
       if (error) throw error;
@@ -151,7 +196,7 @@ const Users: React.FC = () => {
 
       toast({
         title: 'Senha resetada',
-        description: `A senha de ${userName} foi alterada para: ${DEFAULT_RESET_PASSWORD}`,
+        description: `A senha de ${userName} foi alterada para: ${temporaryPassword}`,
       });
     } catch (error: any) {
       console.error('Error resetting password:', error);
@@ -592,6 +637,16 @@ const Users: React.FC = () => {
                                 </>
                               )}
                             </DropdownMenuItem>
+                            {['admin', 'dev'].includes(user?.role || '') && (
+                              <DropdownMenuItem
+                                onClick={() => void handleUnlockTraining(
+                                  u.id, u.full_name
+                                )}
+                              >
+                                <Shield className="w-4 h-4 mr-2" />
+                                Desbloquear treinamento
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => handleResetPassword(u.email, u.full_name)}>
                               <Key className="w-4 h-4 mr-2" />
                               Resetar Senha

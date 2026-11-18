@@ -1,3 +1,4 @@
+import {hasConfeccaoLegalName} from './prospecting-approval-policy.mjs';
 import {isOutsideProfileCnpj} from './prospecting-lost-filter.mjs';
 import {DEFAULT_SETTINGS,getSettings,matchesRegion,matchesCnae,STATES} from './digitale-ai-settings.mjs';
 import crypto from 'node:crypto';
@@ -39,8 +40,9 @@ export async function counts(connection,now=new Date()) {
      WHERE approved_at>=?`,
     [sqlDate(w.hourStart),sqlDate(w.dayStart)]
   );
-  const ah=Number(approved.hour_count||0);
-  const ad=Number(approved.day_count||0);
+  const [[approvedV2]]=await connection.execute(`SELECT SUM(a.approved_at>=?) hour_count,COUNT(*) day_count FROM ia_digitale_approved_v2 a WHERE a.approved_at>=? AND NOT EXISTS(SELECT 1 FROM prospecting_approved_leads h WHERE h.cnpj=a.cnpj) AND NOT EXISTS(SELECT 1 FROM prospecting_auto_deliveries d WHERE d.cnpj=a.cnpj)`,[sqlDate(w.hourStart),sqlDate(w.dayStart)]);
+  const ah=Number(approved.hour_count||0)+Number(approvedV2.hour_count||0);
+  const ad=Number(approved.day_count||0)+Number(approvedV2.day_count||0);
   return {
     hour:Number(row.hour_count||0)+Number(legacy.hour_count||0)+ah,
     day:Number(row.day_count||0)+Number(legacy.day_count||0)+ad,
@@ -136,7 +138,7 @@ export async function deliverVerified(db,p,candidateId=null,{clock=()=>new Date(
 
   if(!Object.hasOwn(STATES,p.registry?.uf||''))throw Error('registry_state_inconclusive');
   if(p.registry?.mei_status !== false)throw Error('mei_status_unconfirmed');
-  if(p.registry?.manufacturing !== true)throw Error('not_apparel_manufacturer');
+  if(p.registry?.manufacturing !== true&&!hasConfeccaoLegalName(p.registry?.legal_name))throw Error('not_apparel_manufacturer');
   if(p.version!==2||p.owner_id!==OWNER||!validCnpj(p.cnpj)||!phone(p.phone)||p.phone_call_tested!==false||!p.registry?.active||!(p.website?.cnpj_match||(p.identity_verified===true&&p.identity_method==='nome_e_telefone_cadastral'&&p.identity_evidence?.company_name_match===true&&p.identity_evidence?.phone_registry_match===true))||!(p.website?.phone_match||p.website?.phone_source==='registry')||domainOf(p.website.url)!==p.domain)throw Error('invalid_verified_proof');
   if (!['comprador_tecidos','confeccao'].includes(p.buyer_segment) ||
       p.email_search_completed !== true)

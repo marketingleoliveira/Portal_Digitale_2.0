@@ -6,6 +6,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import TrainingDevGuard from "./pages/training/TrainingDevGuard";
+import TrainingCatalog from "./pages/training/TrainingCatalog";
+import TrainingComingSoon from "./pages/TrainingComingSoon";
+import TrainingManagement from "./pages/training/TrainingManagement";
+import TrainingProgress from "./pages/training/TrainingProgress";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MeetingErrorBoundary from "@/components/MeetingErrorBoundary";
 import { useUserPresence } from "@/hooks/useUserPresence";
@@ -65,6 +70,7 @@ import FinanceiroReembolsos from "./pages/FinanceiroReembolsos";
 import FinanceiroPontos from "./pages/FinanceiroPontos";
 import FinanceiroRegistros from "./pages/FinanceiroRegistros";
 import ErpSettings from "./pages/ErpSettings";
+import AtendimentoDev from "./pages/AtendimentoDev";
 import SAC from "./pages/SAC";
 import SACDetails from "./pages/SACDetails";
 
@@ -97,6 +103,19 @@ const App = () => (
                   
                   {/* Protected Routes */}
 
+                  {/* Treinamentos — acesso exclusivo DEV */}
+                  <Route path="/treinamentos" element={<ProtectedRoute><TrainingCatalog /></ProtectedRoute>} />
+                  <Route path="/treinamentos/gerenciamento" element={<ProtectedRoute><TrainingDevGuard><TrainingManagement /></TrainingDevGuard></ProtectedRoute>} />
+                  <Route path="/treinamentos/progresso" element={<ProtectedRoute><TrainingDevGuard><TrainingProgress /></TrainingDevGuard></ProtectedRoute>} />
+                  {/* DIGITALE_COMERCIAL_TREINAMENTO_V1 */}
+                  <Route
+                    path="/comercial/treinamento"
+                    element={
+                      <ProtectedRoute>
+                        <TrainingComingSoon />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/produtos" element={<ProtectedRoute><Products /></ProtectedRoute>} />
                   <Route path="/produtos/:id" element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
@@ -143,6 +162,7 @@ const App = () => (
                   <Route path="/financeiro/reembolsos" element={<ProtectedRoute allowedRoles={['dev', 'financeiro', 'admin', 'diretoria', 'gerente']}><FinanceiroReembolsos /></ProtectedRoute>} />
                   <Route path="/financeiro/pontos" element={<ProtectedRoute allowedRoles={['dev', 'financeiro', 'admin', 'diretoria', 'gerente']}><FinanceiroPontos /></ProtectedRoute>} />
                    <Route path="/financeiro/registros" element={<ProtectedRoute allowedRoles={['dev', 'financeiro', 'admin', 'diretoria', 'gerente']}><FinanceiroRegistros /></ProtectedRoute>} />
+                  <Route path="/atendimento-dev" element={<ProtectedRoute><TrainingDevGuard><AtendimentoDev /></TrainingDevGuard></ProtectedRoute>} />
                   <Route path="/configuracoes" element={<ProtectedRoute allowedRoles={['dev']}><ErpSettings /></ProtectedRoute>} />
                   <Route path="/sac" element={<ProtectedRoute><SAC /></ProtectedRoute>} />
                   <Route path="/sac/:id" element={<ProtectedRoute><SACDetails /></ProtectedRoute>} />

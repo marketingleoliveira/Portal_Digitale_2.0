@@ -9,12 +9,12 @@ test('Brazilian checksums and DDD reject plausible but invalid values',()=>{
  assert.equal(validCnpj('00000000000000'),false);assert.equal(phone('+55 (11) 99876-5432'),'11998765432');
  assert.equal(phone('20998765432'),null);assert.equal(phone('1112345678'),null);
 });
-test('every day, inclusive 08h, exclusive 18h, Brazil timezone',()=>{
- assert.equal(windowAt(new Date('2026-10-18T10:59:59Z')).open,false);
+test('24-hour operation preserves Brazil timezone boundaries',()=>{
+ assert.equal(windowAt(new Date('2026-10-18T10:59:59Z')).open,true);
  assert.equal(windowAt(new Date('2026-10-18T11:00:00Z')).open,true);
  assert.equal(windowAt(new Date('2026-10-18T20:59:59Z')).open,true);
- assert.equal(windowAt(new Date('2026-10-18T21:00:00Z')).open,false);
- assert.equal(nextRun(new Date('2026-10-18T21:00:00Z')).toISOString(),'2026-10-19T11:00:00.000Z');
+ assert.equal(windowAt(new Date('2026-10-18T21:00:00Z')).open,true);
+ assert.equal(nextRun(new Date('2026-10-18T21:00:00Z')).toISOString(),'2026-10-18T21:01:00.000Z');
  assert.equal(windowAt(new Date('2018-12-10T10:00:00Z')).hour,8);
  assert.equal(windowAt(new Date('2018-11-04T12:00:00Z')).dayStart.toISOString(),'2018-11-04T03:00:00.000Z');
 });
@@ -62,7 +62,7 @@ test('SITE enrichment preserves origin and participates in the import lock',asyn
 function transactionalFixture({fail=false,hour=19,day=159,externalDelivered=0}={}) {
  const state={writes:[],commits:0,rollbacks:0};
  const connection={query:async()=>[[{acquired:1}]],beginTransaction:async()=>{},release:()=>{},commit:async()=>{state.commits++;},rollback:async()=>{state.rollbacks++;},execute:async(sql,args)=>{
-  if(sql.includes('SUM(approved_at'))return [[{hour_count:0,day_count:0}]];
+  if(sql.includes('SUM(approved_at')||sql.includes('SUM(a.approved_at'))return [[{hour_count:0,day_count:0}]];
   if(sql.includes('SUM(delivered_at'))return [[{hour_count:hour,day_count:day}]];
   if(sql.includes('SUM(d.created_at'))return [[{hour_count:0,day_count:0}]];
   if(sql.startsWith('UPDATE')){state.writes.push({sql,args});return [{affectedRows:1}];}
@@ -89,9 +89,9 @@ test('failed approval rolls back and consumes no quota',async()=>{
  const {state,db}=transactionalFixture({fail:true});await assert.rejects(deliverVerified(db,proof,null,{clock}),/database_unavailable/);
  assert.equal(state.commits,0);assert.equal(state.rollbacks,1);assert.ok(!state.writes.some(w=>w.sql.includes('prospecting_auto_deliveries')));
 });
-test('hour, day and closed window prevent all CRM inserts',async()=>{
+test('hour and day quotas prevent inserts during 24-hour operation',async()=>{
  const proof=await verifyCandidate({website:url},{fetchPage:async()=>page,lookup:async()=>record});
- for(const policy of [{hour:20,day:70},{hour:0,day:160},{hour:0,day:0,closed:true}]){
+ for(const policy of [{hour:20,day:70},{hour:0,day:160}]){
   const {state,db}=transactionalFixture(policy);
   const result=await deliverVerified(db,proof,null,{clock:policy.closed?()=>new Date('2026-10-13T21:00:00Z'):clock});
   assert.equal(result.deferred,true);assert.equal(state.writes.length,0);assert.equal(state.commits,0);

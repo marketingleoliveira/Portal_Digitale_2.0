@@ -1,3 +1,5 @@
+import trainingFinalJourneyRoutes from "./routes/training-final-journey.js";
+import trainingActivityReportRoutes from "./routes/training-activity-report.js";
 import { startAgendorReturnWorker } from "./workers/agendor-returns.js";
 import agendorReturnRoutes from "./routes/agendor-returns.js";
 import http from "node:http";
@@ -21,12 +23,18 @@ import agendorUnreadRoutes from "./routes/agendor-unread.js";
 import agendorMeetingRoutes from "./routes/agendor-meetings.js";
 
 import storageRoutes from "./routes/storage.js";
+import trainingProgressRoutes from "./routes/training-progress-v2.js";
+import trainingV2Routes from "./routes/training-v2.js";
+import trainingActivityPlayerTest from "./routes/training-activity-player-test.js";
+import trainingJourneyTestRoutes from "./routes/training-journey-test-v2.js";
+import trainingAssessmentsV2Routes from "./routes/training-assessments-v2.js";
 import scheduledFilesRoutes, { startScheduledFilesWorker } from "./routes/scheduled-files.js";
 import functionRoutes from "./routes/functions.js";
 import { createRealtimeServer } from "./lib/realtime.js";
 
 import digitaleAIRoutes from './routes/digitale-ai.js';
 import prospectingDashboardRoutes from './routes/prospecting-dashboard.js';
+import rafaelAttendanceRoutes from './routes/rafael-attendance.js';
 
 const app = express();
 app.set("trust proxy", true);
@@ -102,12 +110,20 @@ app.use("/api/integrations/ai-leads", aiLeadRoutes);
 app.use("/api/integrations/prospecting-leads", prospectingLeadRoutes);
 app.use("/api/digitale-ai", digitaleAIRoutes);
 app.use("/api/prospecting-dashboard", prospectingDashboardRoutes);
+app.use("/api/rafael-attendance", rafaelAttendanceRoutes);
 app.use("/api/agendor-unread", agendorUnreadRoutes);
 app.use("/api/agendor-meetings", agendorMeetingRoutes);
 app.use("/api/agendor-returns", agendorReturnRoutes);
 
 app.use("/api/data", dataRoutes);
 app.use("/api/storage", storageRoutes);
+app.use("/api/training-progress-v2", trainingProgressRoutes);
+app.use("/api/training-final-journey", trainingFinalJourneyRoutes);
+app.use("/api/training-activity-report", trainingActivityReportRoutes);
+app.use("/api/training-v2", trainingV2Routes);
+app.use("/api/training-activity-player-test", trainingActivityPlayerTest);
+app.use("/api/training-journey-test-v2", trainingJourneyTestRoutes);
+app.use("/api/training-assessments-v2", trainingAssessmentsV2Routes);
 app.use("/api/scheduled-files", scheduledFilesRoutes);
 app.use("/api/functions/presence-unload", presenceUnloadRoutes);
 app.use("/api/functions", functionRoutes);

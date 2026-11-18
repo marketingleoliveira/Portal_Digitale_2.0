@@ -1,3 +1,4 @@
+import {hasConfeccaoLegalName} from './prospecting-approval-policy.mjs';
 import {DEFAULT_SETTINGS,STATES} from './digitale-ai-settings.mjs';
 import crypto from 'node:crypto';
 import {getPublic} from './prospecting-verification.mjs';
@@ -6,8 +7,8 @@ import {domainOf,excludedDomain} from './prospecting-auto-verification.mjs';
 import {contactLinks} from './prospecting-site-pages.mjs';
 import {VERIFICATION_POLICY,recoverableCandidate,recoverCandidate} from './prospecting-candidate-recovery.mjs';
 
-const commercialTerms=['confecção private label de','fabricante de','confecção de','fábrica de','produção própria de'];
-const paulistaCities=['Americana','Campinas','São José do Rio Preto','Sorocaba','São José dos Campos','Ribeirão Preto','Franca','Birigui','Guarulhos','Osasco','Santo André','São Bernardo do Campo','Indaiatuba','Santa Bárbara d\'Oeste','Nova Odessa','Limeira','Piracicaba','Jundiaí','São Carlos','Araraquara','Bauru','Marília','Presidente Prudente','Brás São Paulo'];
+const commercialTerms=['fabricante de','confecção de','fábrica de','produção própria de','confecção private label de'];
+const paulistaCities=['Americana','Campinas','São José do Rio Preto','Sorocaba','São José dos Campos','Ribeirão Preto','Franca','Birigui','Guarulhos','Osasco','Santo André','São Bernardo do Campo','Indaiatuba','Santa Bárbara d\'Oeste','Nova Odessa','Limeira','Piracicaba','Jundiaí','São Carlos','Araraquara','Bauru','Marília','Presidente Prudente','Brás São Paulo','Cerquilho','Tietê','Ibitinga','Laranjal Paulista','Mogi das Cruzes','Itatiba','Atibaia','Bragança Paulista','Hortolândia','Sumaré','São Roque','Santos'];
 export const SEARCH_SPAN=DEFAULT_SETTINGS.states.length*(paulistaCities.length+1)*DEFAULT_SETTINGS.segments.length*commercialTerms.length*3*2;
 export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
   if(!Number.isSafeInteger(cursor)||cursor<0)throw Error('invalid_search_cursor');
@@ -23,9 +24,9 @@ export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
   const segment=segments[regionalCursor%segments.length];
   const variant=Math.floor(regionalCursor/(cities.length*segments.length));
   const term=commercialTerms[variant%commercialTerms.length];
-  const page=1+Math.floor(variant/commercialTerms.length)%3;
-  const identityHint=settings.cnaes?.length&&regionalCursor%3===0?' CNPJ':'';
-  return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]} ${uf}${identityHint}`,pageno:1,engines:'yandex'};
+  const page=1;
+  const identityHint='';
+  return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]}${identityHint}`,pageno:page,engines:'duckduckgo'};
 }
 
 // DIGITALE_REGISTRY_DIRECTORY_GUARD_V12
@@ -86,7 +87,7 @@ export function discoveryResult(result) {
 
   if (
     !factoryEvidence.test(searchText) ||
-    !clothingEvidence.test(searchText)
+    (!clothingEvidence.test(searchText) && !hasConfeccaoLegalName(searchText))
   ) return null;
 
 if (blockedProspectingSource(result?.url)) return null;
@@ -347,7 +348,7 @@ async function searchWithFallback(endpoint,fetchSearch) {
   const first=endpoint.searchParams.get('engines');
   let lastError,empty;
   const degraded=[];
-  for(const engine of [first]) {
+  for(const engine of [...new Set([first,'yahoo','duckduckgo','yandex'])]) {
     const url=new URL(endpoint);url.searchParams.set('engines',engine);
     try {
       const response=await fetchSearch(url,{signal:AbortSignal.timeout(12000)});
@@ -382,11 +383,11 @@ export async function discoverCandidates(db,cursor,{fetchSearch=fetch,fetchSite=
     existingDomains.set(candidate.domain,existing[0]||null);
     if(existing.length&&!recoverableCandidate(existing[0]))known.push(candidate.domain);
   }
-  if(known.length>=3) {
+  if(known.length>=1) {
     const broadened=new URL(endpoint);
     broadened.searchParams.set('q',plan.q+' '+[...new Set(known)].slice(0,8).map(domain=>'-site:'+domain).join(' '));
     broadened.searchParams.set('pageno','1');
-    broadened.searchParams.set('engines','yandex');
+    broadened.searchParams.set('engines',search.engine);
     try {
       const retry=await fetchSearch(broadened,{signal:AbortSignal.timeout(12000)});
       if(retry.ok){const extra=await retry.json();if(Array.isArray(extra.results)){

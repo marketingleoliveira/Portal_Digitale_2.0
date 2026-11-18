@@ -36,16 +36,16 @@ async function cycle() {
     const [[available]]=await db.execute("SELECT COUNT(*) total FROM prospecting_auto_candidates WHERE status='discovered'");
     if((!externalBatchId||Number(available.total)<30)&&(!runtime.provider_retry_at||new Date(runtime.provider_retry_at)<=new Date())) {
       try {
-        for(let searchIndex=0;searchIndex<(externalBatchId?15:5)&&!stopping&&windowAt().open;searchIndex++){found+=await discover(runtime.query_cursor+searchIndex,id);await db.execute('UPDATE prospecting_auto_runs SET found=? WHERE id=?',[found,id]);await sleep(12000);}
+        for(let searchIndex=0;searchIndex<(externalBatchId?3:1)&&!stopping&&windowAt().open;searchIndex++){found+=await discover(runtime.query_cursor+searchIndex,id);await db.execute('UPDATE prospecting_auto_runs SET found=? WHERE id=?',[found,id]);await sleep(12000);}
         await db.execute('UPDATE prospecting_auto_runtime SET provider_failures=0,provider_retry_at=NULL WHERE id=1');
       }
       catch(e) {
-        const failures=runtime.provider_failures+1,backoff=Math.min(3600,60*2**Math.min(failures,6));
+        const failures=runtime.provider_failures+1,backoff=Math.min(300,30*2**Math.min(failures,4));
         await db.execute('UPDATE prospecting_auto_runtime SET query_cursor=query_cursor+1,provider_failures=?,provider_retry_at=? WHERE id=1',[failures,sqlDate(new Date(Date.now()+backoff*1000))]);
         await db.execute('UPDATE prospecting_auto_runs SET error=? WHERE id=?',[safeReason(e),id]);
       }
     }
-    const [candidates]=await db.execute("SELECT c.* FROM prospecting_auto_candidates c WHERE c.status IN ('discovered','review','verified') AND (c.next_attempt_at IS NULL OR c.next_attempt_at<=UTC_TIMESTAMP(6)) AND NOT EXISTS (SELECT 1 FROM prospecting_approved_leads a WHERE a.candidate_id=c.id OR a.cnpj=c.cnpj) AND NOT EXISTS (SELECT 1 FROM prospecting_auto_deliveries d WHERE d.candidate_id=c.id OR d.cnpj=c.cnpj) ORDER BY CASE WHEN c.status='discovered' THEN 0 ELSE 1 END,c.attempts,c.discovered_at LIMIT 80");
+    const [candidates]=await db.execute("SELECT c.* FROM prospecting_auto_candidates c WHERE c.status IN ('discovered','review','verified') AND (c.next_attempt_at IS NULL OR c.next_attempt_at<=UTC_TIMESTAMP(6)) AND NOT EXISTS (SELECT 1 FROM prospecting_approved_leads a WHERE a.candidate_id=c.id OR a.cnpj=c.cnpj) AND NOT EXISTS (SELECT 1 FROM prospecting_auto_deliveries d WHERE d.candidate_id=c.id OR d.cnpj=c.cnpj)  AND NOT EXISTS (SELECT 1 FROM ia_digitale_approved_v2 v WHERE v.candidate_id=c.id OR v.cnpj=c.cnpj) ORDER BY CASE WHEN c.status='discovered' THEN 0 ELSE 1 END,c.attempts,c.discovered_at LIMIT 80");
     for(let offset=0;offset<candidates.length;offset+=6) {
       const batch=candidates.slice(offset,offset+6);
       const results=await Promise.allSettled(batch.map(async candidate => {
@@ -112,6 +112,7 @@ async function cycle() {
         const result=await approveOnlyIA(db,proof,candidate.id);
         if(result.created){if(result.approved)approved++;else delivered++;}
         else await db.execute('UPDATE prospecting_auto_candidates SET status=?,reason=?,next_attempt_at=?,updated_at=UTC_TIMESTAMP(6) WHERE id=?',[result.duplicate?'duplicate':'verified',result.reason||null,result.duplicate?null:sqlDate(nextRun()),candidate.id]);
+        if(result.created)await db.execute("UPDATE prospecting_auto_candidates SET status='approved',cnpj=?,company=?,phone=?,reason=NULL,next_attempt_at=NULL,updated_at=UTC_TIMESTAMP(6) WHERE id=?",[proof.cnpj,proof.company,proof.phone,candidate.id]);
         if(result.created)console.log(JSON.stringify({event:result.approved?'verified_approval':'verified_delivery',cnpj:proof.cnpj,deal_id:result.deal_id,owner_id:result.owner_id}));
         await reporter.result(result.created?(result.approved?'approved':'delivered'):result.duplicate?'duplicate':'waiting',result.reason||null,{company:proof.company,cnpj:proof.cnpj,owner_id:result.owner_id});
       }catch(e) {

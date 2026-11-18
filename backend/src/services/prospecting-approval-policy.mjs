@@ -1,3 +1,9 @@
+// Razão social confirmada no cadastro: alternativa comercial autorizada.
+export function hasConfeccaoLegalName(value) {
+  const name=String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return /\bconfecc(?:ao|oes)\b/.test(name);
+}
+
 
 // DIGITALE — POLÍTICA DE APROVAÇÃO
 // Não atribuir novos leads à Nicolle ou ao CRM.
@@ -78,7 +84,8 @@ export function evaluateApproval(company, allowedCnaes = ['1412601']) {
       ? company.cnaes_secundarios : [])
   ].map(normalizeCnae);
 
-  const permitted = allowedCnaes
+  const legalNameEligible=hasConfeccaoLegalName(company.razao_social || company.legal_name);
+  const permitted = legalNameEligible || allowedCnaes
     .map(normalizeCnae)
     .some(cnae => cnaes.includes(cnae));
 
@@ -113,6 +120,7 @@ export function evaluateApproval(company, allowedCnaes = ['1412601']) {
 
   return {
     approved,
+    approval_basis: approved ? (legalNameEligible ? 'legal_name_confeccao' : 'allowed_cnae') : null,
     cnpj,
     phone,
     email: validEmail(email) ? email : null,

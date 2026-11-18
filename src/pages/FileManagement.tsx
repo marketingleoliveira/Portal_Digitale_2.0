@@ -1101,14 +1101,15 @@ const FileManagement: React.FC = () => {
                   Novo Arquivo
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-md w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto overscroll-contain">
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-[1040px] max-h-[calc(100dvh-2rem)] overflow-y-auto lg:overflow-visible p-4 sm:p-6 gap-3">
               <DialogHeader>
                 <DialogTitle>Enviar Arquivo</DialogTitle>
                 <DialogDescription>
                   Faça upload de um arquivo e defina quem pode visualizá-lo
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4 mt-1">
+                <div className="min-w-0 space-y-4">
                 {/* File Input */}
                 <div className="space-y-2">
                   <Label>Arquivos *</Label>
@@ -1178,6 +1179,8 @@ const FileManagement: React.FC = () => {
                   />
                 </div>
 
+                </div>
+                <div className="min-w-0 space-y-4">
                 {/* Category */}
                 <div className="space-y-2">
                   <Label htmlFor="category">Categoria</Label>
@@ -1240,7 +1243,7 @@ const FileManagement: React.FC = () => {
                 {/* Visibility */}
                 <div className="space-y-2">
                   <Label>Visível para *</Label>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-x-4 gap-y-3">
                     {ALL_ROLES.map(role => (
                       <div key={role} className="flex items-center space-x-2">
                         <Checkbox
@@ -1271,7 +1274,7 @@ const FileManagement: React.FC = () => {
                     <p className="text-xs text-muted-foreground">
                       Deixe vazio para todos os vendedores verem. Selecione regiões para restringir.
                     </p>
-                    <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto border rounded-lg p-2">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-x-2 gap-y-2 border rounded-lg p-2">
                       {REGIONS.map(region => (
                         <div key={region.value} className="flex items-center space-x-1">
                           <Checkbox
@@ -1293,6 +1296,9 @@ const FileManagement: React.FC = () => {
                   </div>
                 )}
 
+                </div>
+
+                <div className="lg:col-span-2 border-t pt-3">
                 <ScheduledFileActions
                   files={selectedFiles}
                   form={formData}
@@ -1309,6 +1315,7 @@ const FileManagement: React.FC = () => {
                     setScheduledVersion(value => value + 1);
                   }}
                 />
+                </div>
               </div>
             </DialogContent>
           </Dialog>

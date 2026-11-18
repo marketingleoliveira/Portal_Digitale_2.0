@@ -44,7 +44,7 @@ test('full verification preserves strict registry, geography and manufacturing c
  const options={fetchPage:async url=>page(url.endsWith('robots.txt')?'':company+' '+partner),lookup:async()=>record};
  const proof=await verifyCandidate({website:'https://fixture.example/'},options);
  assert.equal(proof.cnpj,owner);assert.equal(proof.registry.mei_status,false);assert.equal(proof.registry.primary_cnae,1422300);assert.equal(proof.registry.manufacturing,true);
- for(const [change,reason] of [[{mei_status:true},/mei_excluded/],[{mei_status:null},/mei_status_unconfirmed/],[{situacao_cadastral:8},/inactive/],[{cnae_fiscal:6201501},/not_apparel/],[{cnpj:agency},/mismatch/],[{uf:'XX'},/registry_state_inconclusive/]]){
+ for(const [change,reason] of [[{mei_status:true},/mei_excluded/],[{mei_status:null},/mei_status_unconfirmed/],[{situacao_cadastral:8},/inactive/],[{cnae_fiscal:6201501,razao_social:'EMPRESA DE SOFTWARE LTDA'},/not_apparel/],[{cnpj:agency},/mismatch/],[{uf:'XX'},/registry_state_inconclusive/]]){
   await assert.rejects(verifyCandidate({website:'https://fixture.example/'},{...options,lookup:async()=>({...record,data:{...record.data,...change}})}),reason);
  }
  await assert.rejects(verifyCandidate({website:'https://fixture.example/'},{...options,settings:{...DEFAULT_SETTINGS,states:['SP']}}),/outside_target_state/);

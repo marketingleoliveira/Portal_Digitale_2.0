@@ -1,0 +1,222 @@
+[
+  {
+    "lesson": 1,
+    "question": "Uma marca pergunta qual base deve comprar, mas você ainda não conhece a coleção. Qual é a melhor primeira ação?",
+    "options": [
+      "Investigar aplicação e necessidade antes de indicar um artigo.",
+      "Indicar a base de maior preço.",
+      "Enviar todos os artigos sem fazer perguntas."
+    ],
+    "answer": 0,
+    "explanation": "A venda consultiva parte do diagnóstico; a indicação precisa responder à aplicação e à necessidade do cliente."
+  },
+  {
+    "lesson": 1,
+    "question": "Qual alternativa representa uma venda de valor bem conduzida?",
+    "options": [
+      "Descrever o maior número possível de tecnologias.",
+      "Ligar a dor à solução e ao ganho, validar e combinar um próximo passo.",
+      "Negociar somente o preço por quilo."
+    ],
+    "answer": 1,
+    "explanation": "O método conecta necessidade, solução, benefício relevante e um avanço concreto."
+  },
+  {
+    "lesson": 2,
+    "question": "Qual conjunto de sinais justifica priorizar uma empresa para pesquisa comercial?",
+    "options": [
+      "Apenas o número de seguidores.",
+      "Somente uma aparência sofisticada no site.",
+      "Aplicação fitness, valorização de qualidade e estrutura comercial identificável."
+    ],
+    "answer": 2,
+    "explanation": "A combinação de aplicação, posicionamento e estrutura comercial indica aderência. Sinais públicos ainda precisam ser confirmados na qualificação."
+  },
+  {
+    "lesson": 2,
+    "question": "Ao mapear a decisão de compra, qual organização está alinhada ao manual?",
+    "options": [
+      "Priorizar proprietário e comprador, considerando o estilista como influenciador técnico.",
+      "Tratar qualquer contato como o decisor final.",
+      "Conversar apenas com o estilista e ignorar a aprovação da compra."
+    ],
+    "answer": 0,
+    "explanation": "O papel de compra, criação e aprovação deve ser entendido. Proprietário e comprador são prioridades no material."
+  },
+  {
+    "lesson": 3,
+    "question": "Antes de um novo contato com uma empresa já conhecida, o que você deve verificar?",
+    "options": [
+      "Somente o nome da marca.",
+      "Histórico no CRM, contatos anteriores e restrições relevantes.",
+      "Apenas a última publicação nas redes sociais."
+    ],
+    "answer": 1,
+    "explanation": "O histórico permite dar continuidade ao atendimento e evita abordagens repetidas ou incompatíveis com orientações registradas."
+  },
+  {
+    "lesson": 3,
+    "question": "Você observou uma coleção nova no site. Qual abordagem usa esse fato corretamente?",
+    "options": [
+      "Afirmar que a marca sofre com devoluções, mesmo sem confirmação.",
+      "Garantir aumento de vendas para a nova coleção.",
+      "Mencionar a coleção observada e perguntar quais critérios estão avaliando nas bases."
+    ],
+    "answer": 2,
+    "explanation": "Um gancho usa uma evidência verdadeira e abre uma investigação; não apresenta hipóteses como problemas confirmados."
+  },
+  {
+    "lesson": 4,
+    "question": "Qual é o avanço mais coerente no início de uma ligação de prospecção?",
+    "options": [
+      "Obter permissão para fazer perguntas rápidas e entender o cenário.",
+      "Solicitar o pedido antes de conhecer a aplicação.",
+      "Apresentar todas as fichas técnicas sem interrupções."
+    ],
+    "answer": 0,
+    "explanation": "A primeira ligação busca espaço para uma conversa de diagnóstico, não uma apresentação completa do catálogo."
+  },
+  {
+    "lesson": 4,
+    "question": "Como deve ser uma retomada dentro da cadência comercial?",
+    "options": [
+      "Repetir exatamente a mesma mensagem até obter resposta.",
+      "Considerar o histórico e acrescentar um motivo relevante para conversar.",
+      "Ignorar uma recusa para manter a quantidade de contatos."
+    ],
+    "answer": 1,
+    "explanation": "Persistência com método utiliza contexto e relevância, respeitando os limites informados pelo cliente."
+  },
+  {
+    "lesson": 5,
+    "question": "O cliente relata retrabalho no corte. Qual pergunta explora a dimensão de implicação do SPIN?",
+    "options": [
+      "Qual é o nome da marca?",
+      "Que tipos de peça vocês confeccionam?",
+      "Como esse retrabalho afeta o prazo e o custo da coleção?"
+    ],
+    "answer": 2,
+    "explanation": "A implicação explora as consequências do problema na operação, com dados reais fornecidos pelo cliente."
+  },
+  {
+    "lesson": 5,
+    "question": "No diagnóstico, o cliente informa que o principal problema é prazo. Qual apresentação faz mais sentido?",
+    "options": [
+      "Investigar programação e disponibilidade, relacionando-as ao impacto do atraso.",
+      "Começar por uma tecnologia sem relação com a prioridade relatada.",
+      "Prometer entrega imediata sem validar o artigo."
+    ],
+    "answer": 0,
+    "explanation": "A prioridade do cliente orienta a apresentação. Disponibilidade e prazo não devem ser prometidos antes de validação."
+  },
+  {
+    "lesson": 6,
+    "question": "Qual relação entre dor e impacto aparece nos materiais comerciais?",
+    "options": [
+      "Variação de largura sempre aumenta o valor da peça.",
+      "Variação de largura pode reduzir o aproveitamento no corte.",
+      "Largura não interfere na produção."
+    ],
+    "answer": 1,
+    "explanation": "A variação técnica pode afetar aproveitamento e produtividade; é necessário investigar a dimensão real do impacto."
+  },
+  {
+    "lesson": 6,
+    "question": "O cliente pede pronta entrega para uma produção urgente. Como responder com responsabilidade?",
+    "options": [
+      "Confirmar imediatamente para manter o interesse.",
+      "Usar a urgência como prova de disponibilidade.",
+      "Verificar disponibilidade e condições aplicáveis antes de confirmar."
+    ],
+    "answer": 2,
+    "explanation": "O material condiciona pronta entrega à validação da situação. Urgência do cliente não comprova disponibilidade."
+  },
+  {
+    "lesson": 7,
+    "question": "Uma preocupação confirmada envolve cobertura da legging. Qual característica de Milano pode entrar na conversa?",
+    "options": [
+      "A estrutura de malha dupla, com avaliação da aplicação e da peça pronta.",
+      "A afirmação de que qualquer peça terá resultado absoluto sem teste.",
+      "Micro respiros como principal característica de Milano."
+    ],
+    "answer": 0,
+    "explanation": "O manual relaciona a malha dupla de Milano à cobertura. A aplicação precisa ser validada, sem promessas absolutas."
+  },
+  {
+    "lesson": 7,
+    "question": "Qual associação diferencia Lyon e Veneza conforme o manual?",
+    "options": [
+      "Lyon é descrito como dry com micro respiros; Veneza não tem acabamento distinto.",
+      "Lyon tem textura canelada e brilho leve; Veneza tem brilho acetinado e toque macio.",
+      "Os dois devem ser apresentados como tecidos de estrutura idêntica."
+    ],
+    "answer": 1,
+    "explanation": "Textura canelada e brilho leve aparecem na proposta de Lyon; acabamento acetinado e toque macio, na de Veneza."
+  },
+  {
+    "lesson": 8,
+    "question": "Como avaliar comercialmente o rendimento de Caribe?",
+    "options": [
+      "Prometer uma economia fixa para qualquer coleção.",
+      "Calcular o custo sem conhecer aplicação ou risco.",
+      "Usar dados reais de corte e aplicação para comparar o custo por peça."
+    ],
+    "answer": 2,
+    "explanation": "Uma simulação precisa de dados da confecção. O rendimento não deve virar uma economia garantida sem avaliação."
+  },
+  {
+    "lesson": 8,
+    "question": "Qual proposta de Aerodry está descrita no manual?",
+    "options": [
+      "Secagem rápida, respirabilidade e micro respiros, ligados à aplicação.",
+      "Resultado esportivo garantido para qualquer usuário.",
+      "Equivalência automática com qualquer tecido do mercado."
+    ],
+    "answer": 0,
+    "explanation": "Aerodry é apresentado com atributos de secagem rápida e respirabilidade. Não há garantia de resultado esportivo."
+  },
+  {
+    "lesson": 9,
+    "question": "Diante de “está caro”, qual sequência corresponde ao método E.R.A.?",
+    "options": [
+      "Confrontar, pressionar e fechar.",
+      "Reconhecer a preocupação, esclarecer a comparação e propor uma avaliação concreta.",
+      "Concordar com tudo e encerrar sem investigar."
+    ],
+    "answer": 1,
+    "explanation": "Empatia reconhece a preocupação; realidade reconecta critérios e dados; avanço propõe uma ação coerente."
+  },
+  {
+    "lesson": 9,
+    "question": "O cliente diz que já possui um fornecedor satisfatório. Qual conduta preserva a relação?",
+    "options": [
+      "Desqualificar o fornecedor atual.",
+      "Exigir a troca imediata.",
+      "Respeitar a parceria e investigar espaço para uma opção adicional ou um teste pertinente."
+    ],
+    "answer": 2,
+    "explanation": "O manual recomenda respeitar relações que funcionam e propor uma avaliação com propósito, sem confronto."
+  },
+  {
+    "lesson": 10,
+    "question": "Qual registro permite continuar uma oportunidade comercial com clareza?",
+    "options": [
+      "Necessidade, artigo de interesse, ação futura, data e responsável.",
+      "Somente “cliente interessado”.",
+      "Uma anotação sem próxima atividade."
+    ],
+    "answer": 0,
+    "explanation": "O CRM deve registrar contexto e um próximo passo que permita continuidade pela equipe."
+  },
+  {
+    "lesson": 10,
+    "question": "Antes de considerar o pedido alinhado, o que deve ser confirmado?",
+    "options": [
+      "Apenas o preço verbalmente mencionado.",
+      "Artigo, cor, quantidade, condição comercial, prazo e logística aplicáveis.",
+      "Somente o artigo, deixando os demais detalhes para depois."
+    ],
+    "answer": 1,
+    "explanation": "O checklist de fechamento alinha o pedido e as expectativas, sem prometer condições fora da política."
+  }
+]

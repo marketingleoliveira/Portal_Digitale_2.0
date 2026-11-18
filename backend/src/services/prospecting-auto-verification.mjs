@@ -1,3 +1,4 @@
+import {hasConfeccaoLegalName} from './prospecting-approval-policy.mjs';
 import { classifyTextileBuyer } from './prospecting-textile-profile.mjs';
 import {DEFAULT_SETTINGS,matchesRegion,matchesCnae,STATES} from './digitale-ai-settings.mjs';
 import {normCnpj,validCnpj,phone,containsCnpj,publishedCnpjs,getPublic,plain,links,socialUrl} from './prospecting-verification.mjs';
@@ -31,13 +32,24 @@ async function registryUnqueued(cnpj, fetchPage = getPublic) {
   await sleep(Math.max(0,22000-(Date.now()-lastRegistry)));
   lastRegistry = Date.now();
   const primary=`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`;
-  try {const result=await fetchPage(primary);return {url:result.url, data:(() => {const raw=JSON.parse(result.body);return {...raw,mei_status:meiStatus(raw.opcao_pelo_mei)};})()};} catch {
+  let primaryRecord;
+  try {
+    const result=await fetchPage(primary),raw=JSON.parse(result.body);
+    primaryRecord={url:result.url,data:{...raw,mei_status:meiStatus(raw.opcao_pelo_mei)}};
+    // Uma resposta HTTP válida pode omitir o MEI; confirme na segunda fonte.
+    if(primaryRecord.data.mei_status!==null)return primaryRecord;
+  } catch {}
+  try {
     await sleep(22000);
     lastRegistry=Date.now();
     const url=`https://publica.cnpj.ws/cnpj/${cnpj}`;
     const result=await fetchPage(url), raw=JSON.parse(result.body), e=raw.estabelecimento;
     if(!e)throw Error('registry_inconclusive');
     return {url:result.url,data:{mei_status:meiStatus(raw.simples?.mei),cnpj:e.cnpj,razao_social:raw.razao_social,nome_fantasia:e.nome_fantasia,situacao_cadastral:String(e.situacao_cadastral).toUpperCase()==='ATIVA'?2:0,cnae_fiscal:e.atividade_principal?.id,cnaes_secundarios:(e.atividades_secundarias||[]).map(a=>({codigo:a.id})),ddd_telefone_1:[e.ddd1,e.telefone1].filter(Boolean).join(''),ddd_telefone_2:[e.ddd2,e.telefone2].filter(Boolean).join(''),uf:e.estado?.sigla,municipio:e.cidade?.nome,updated_at:e.atualizado_em}};
+  } catch(error) {
+    // Ausência de confirmação continua pendente, nunca aprovada por suposição.
+    if(primaryRecord)return primaryRecord;
+    throw error;
   }
 }
 
@@ -370,20 +382,21 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
   if(!registryValid(r,cnpj))throw Error('registry_inactive_or_mismatch');
   if(r.mei_status === true)throw Error('mei_excluded');
   if(r.mei_status !== false)throw Error('mei_status_unconfirmed');
-  if(!manufacturing(r))throw Error('not_apparel_manufacturer');
+  const legalNameEligible=hasConfeccaoLegalName(r.razao_social);
+  if(!legalNameEligible&&!manufacturing(r))throw Error('not_apparel_manufacturer');
   if(!matchesCnae(r,settings))throw Error('outside_target_cnae');
   await onProgress('profile',{cnpj,company:r.nome_fantasia||r.razao_social,uf:r.uf});
   const uf=String(r.uf||'').trim().toUpperCase();
   if(!Object.hasOwn(STATES,uf))throw Error('registry_state_inconclusive');
   if(!matchesRegion({uf},settings))throw Error('outside_target_state');
   // UF registrada sem restricao comercial.
-  if(!pages.some(officialManufacturerPage))throw Error('outside_textile_buyer_profile');
+  if(!legalNameEligible&&!pages.some(officialManufacturerPage))throw Error('outside_textile_buyer_profile');
   const textoComercial = pages.map(p => plain(p.body)).join(' ').slice(0,120000);
   const fitness = /moda\s+fitness|roupas?\s+fitness|activewear|sportswear|moda\s+esportiva|moda\s+praia|biqu[ií]ni|mai[oô]s|legging|top\s+fitness/i.test(textoComercial);
   const fabrica = /confec[cç][aã]o|fabricante\s+de\s+roupas|f[aá]brica\s+de\s+roupas|private\s+label|fac[cç][aã]o|produ[cç][aã]o\s+pr[oó]pria/i.test(textoComercial);
   const tecidos = /atacado\s+de\s+tecidos|distribui[cç][aã]o\s+de\s+tecidos|revenda\s+de\s+tecidos|tecidos\s+para\s+confec[cç][aã]o/i.test(textoComercial);
   const buyerSegment = classifyTextileBuyer(textoComercial);
-  const resolvedBuyerSegment = buyerSegment || 'perfil_pendente';
+  const resolvedBuyerSegment = legalNameEligible ? 'confeccao' : buyerSegment || 'perfil_pendente';
   if(resolvedBuyerSegment === 'perfil_pendente')throw Error('outside_textile_buyer_profile');
   await onProgress('contact',{cnpj,company:r.nome_fantasia||r.razao_social,uf});
   const cnpjPage=selection.published?pages.find(p=>pageCnpjs(p.body).includes(cnpj)):null;
@@ -472,5 +485,5 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
     }
   }
 
-   return {version:2,buyer_segment:resolvedBuyerSegment,email_search_completed:true,owner_id:OWNER,checked_at:new Date().toISOString(),cnpj,phone:number,company:r.nome_fantasia||r.razao_social,domain,email,phone_call_tested:false,registry:{url:record.url,cnpj,active:true,mei_status:false,manufacturing:true,primary_cnae:r.cnae_fiscal,secondary_cnaes:(r.cnaes_secundarios||[]).map(a=>a.codigo),uf,municipio:r.municipio||null,legal_name:r.razao_social,trade_name:r.nome_fantasia||null,source_updated_at:r.updated_at||null},identity_verified:true,identity_method:cnpjPage?'cnpj_publicado':'nome_e_telefone_cadastral',identity_evidence:{company_name_match:companyNameMatch,phone_registry_match:phoneRegistryMatch,cnpj_published:Boolean(cnpjPage),registry_url:record.url},website:{url:phonePage?.url||cnpjPage?.url||origin+'/',cnpj_url:cnpjPage?.url||null,cnpj_match:Boolean(cnpjPage),phone_match:Boolean(sitePhone),phone_source:phoneSource},discovery_url:root};
+   return {version:2,buyer_segment:resolvedBuyerSegment,email_search_completed:true,owner_id:OWNER,checked_at:new Date().toISOString(),cnpj,phone:number,company:r.nome_fantasia||r.razao_social,domain,email,phone_call_tested:false,approval_basis:legalNameEligible?'legal_name_confeccao':'allowed_cnae',registry:{url:record.url,cnpj,active:true,situacao_cadastral:r.situacao_cadastral,mei_status:r.mei_status,manufacturing:manufacturing(r),primary_cnae:r.cnae_fiscal,secondary_cnaes:(r.cnaes_secundarios||[]).map(a=>a.codigo),uf,municipio:r.municipio||null,legal_name:r.razao_social,trade_name:r.nome_fantasia||null,source_updated_at:r.updated_at||null},identity_verified:true,identity_method:cnpjPage?'cnpj_publicado':'nome_e_telefone_cadastral',identity_evidence:{company_name_match:companyNameMatch,phone_registry_match:phoneRegistryMatch,cnpj_published:Boolean(cnpjPage),registry_url:record.url},website:{url:phonePage?.url||cnpjPage?.url||origin+'/',cnpj_url:cnpjPage?.url||null,cnpj_match:Boolean(cnpjPage),phone_match:Boolean(sitePhone),phone_source:phoneSource},discovery_url:root};
 }
