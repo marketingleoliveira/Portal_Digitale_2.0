@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Handshake, LockKeyhole, PhoneCall, Search, RefreshCcw, Clock, CalendarCheck, MessageSquareText, RotateCcw, PhoneOff, PhoneForwarded, Building2, ChevronRight, UserRound, Phone, Tag, Sparkles, Trash2 } from "lucide-react";
 
 const filters = [
@@ -46,9 +45,6 @@ export default function AtendimentoDev() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Call | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [pendingBatchIds, setPendingBatchIds] = useState<string[]>([]);
-  const [successNotice, setSuccessNotice] = useState("");
 
   const load = useCallback(async (quiet = false) => {
     if (!token) return;
@@ -88,7 +84,6 @@ export default function AtendimentoDev() {
         throw new Error(result?.error || "Não foi possível excluir a ligação.");
       }
       setCalls(current => current.filter(item => item.id !== call.id));
-      setSelectedIds(current => new Set([...current].filter(id => id !== call.id)));
       setTotals(current => {
         const next = { ...current };
         const status = call.status === "nao_contatar" ? "recusado" : call.status;
@@ -118,54 +113,6 @@ export default function AtendimentoDev() {
   ]), []);
   const visibleColumns = filter === "todos" ? statusCards : statusCards.filter(c => c.key === filter);
   const groupedCalls = useMemo(() => Object.fromEntries(statusCards.map(c => [c.key, calls.filter(call => call.status === c.key)])) as Record<string, Call[]>, [calls, statusCards]);
-  const visibleIds = useMemo(() => calls.filter(call => filter === "todos" || call.status === filter).map(call => call.id), [calls, filter]);
-  const selectedVisibleCount = visibleIds.filter(id => selectedIds.has(id)).length;
-  const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
-  const toggleCallSelection = (id: string, checked: boolean) => {
-    setSuccessNotice("");
-    setSelectedIds(previous => {
-      const next = new Set(previous);
-      if (checked) next.add(id); else next.delete(id);
-      return next;
-    });
-  };
-  const toggleVisibleSelection = (checked: boolean) => {
-    setSuccessNotice("");
-    setSelectedIds(previous => {
-      const next = new Set(previous);
-      for (const id of visibleIds) {
-        if (checked) next.add(id); else next.delete(id);
-      }
-      return next;
-    });
-  };
-  const deleteSelectedCalls = async () => {
-    if (deleting || !token || pendingBatchIds.length === 0) return;
-    const ids = [...pendingBatchIds];
-    setDeleting(true);
-    try {
-      const response = await fetch("/api/rafael-attendance/batch-delete", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-        cache: "no-store",
-      });
-      const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.ok) throw new Error(result?.error || "Não foi possível excluir as ligações.");
-      const deleted = new Set(ids);
-      setCalls(previous => previous.filter(call => !deleted.has(call.id)));
-      setSelectedIds(previous => new Set([...previous].filter(id => !deleted.has(id))));
-      if (selected && deleted.has(selected.id)) { setSelected(null); setDetail(null); }
-      setPendingBatchIds([]);
-      setError("");
-      setSuccessNotice(`${ids.length} ${ids.length === 1 ? "ligação excluída" : "ligações excluídas"} com sucesso.`);
-      await load(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao excluir ligações.");
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   return <DashboardLayout>
     <div className="w-full max-w-none space-y-6 pb-12">
@@ -181,10 +128,10 @@ export default function AtendimentoDev() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground"><PhoneCall className="h-4 w-4"/><span><strong className="font-semibold text-foreground">{Number(totals.total || 0)}</strong> ligações registradas</span></div>
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCcw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}/>Atualizar</Button>
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4" aria-label="Status dos atendimentos">
-        {statusCards.map(item => <button key={item.key} type="button" onClick={() => setFilter(filter === item.key ? "todos" : item.key)} aria-pressed={filter === item.key} className={`rounded-xl border border-l-4 ${item.border} bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === item.key ? "ring-2 ring-primary/70" : ""}`}>
-          <div className="flex items-start justify-between gap-2"><item.icon className={`h-5 w-5 ${item.color}`}/><span className="text-2xl font-semibold tabular-nums leading-none">{Number(totals[item.key] || 0)}</span></div>
-          <p className="mt-3 text-sm font-semibold">{item.label}</p><p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7" aria-label="Status dos atendimentos">
+        {statusCards.map(item => <button key={item.key} type="button" onClick={() => setFilter(filter === item.key ? "todos" : item.key)} aria-pressed={filter === item.key} className={`rounded-xl border border-l-4 ${item.border} bg-card p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === item.key ? "ring-2 ring-primary/70" : ""}`}>
+          <div className="flex items-start justify-between gap-2"><item.icon className={`h-5 w-5 ${item.color}`}/><span className="text-xl font-semibold tabular-nums leading-none">{Number(totals[item.key] || 0)}</span></div>
+          <p className="mt-2 text-[13px] font-semibold">{item.label}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.description}</p>
         </button>)}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -193,43 +140,14 @@ export default function AtendimentoDev() {
       </div>
       {error && <div role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{error}</div>}
       <section aria-label="Quadro de atendimentos">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Quadro de atendimentos</h2><p className="text-xs text-muted-foreground">Selecione um status acima para visualizar somente seus contatos.</p></div><Badge variant="outline">{filter === "todos" ? "Todos" : labelStatus(filter)}</Badge></div>
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-card px-3 py-3">
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium">
-            <Checkbox
-              aria-label="Selecionar todas as ligações visíveis"
-              checked={allVisibleSelected ? true : selectedVisibleCount > 0 ? "indeterminate" : false}
-              disabled={deleting || visibleIds.length === 0}
-              onCheckedChange={checked => toggleVisibleSelection(checked === true)}
-            />
-            Selecionar todas as visíveis ({visibleIds.length})
-          </label>
-          <span className="text-xs text-muted-foreground" aria-live="polite">{selectedIds.size} selecionadas</span>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {selectedIds.size > 0 && (
-              <Button size="sm" variant="ghost" disabled={deleting} onClick={() => setSelectedIds(new Set())}>
-                Limpar seleção
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="destructive"
-              disabled={deleting || selectedIds.size === 0}
-              onClick={() => setPendingBatchIds([...selectedIds])}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir selecionadas ({selectedIds.size})
-            </Button>
-          </div>
-        </div>
-        {successNotice && <div role="status" className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{successNotice}</div>}
-        <div className={`grid gap-3 items-start ${filter === "todos" ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7" : "grid-cols-1"}`} role="list">
-          {visibleColumns.map(col => <Card key={col.key} role="listitem" className={`min-w-0 w-full overflow-hidden border-t-4 ${col.border.replace('border-l-', 'border-t-')} bg-muted/20 shadow-sm`}>
-            <div className="flex items-center justify-between gap-1 border-b bg-card px-2 py-3"><div className="flex items-center gap-2"><col.icon className={`h-4 w-4 ${col.color}`}/><h3 className="text-xs font-semibold leading-tight">{col.label}</h3></div><Badge variant="secondary" className="tabular-nums">{groupedCalls[col.key]?.length || 0}</Badge></div>
-            <CardContent className="space-y-2 p-2">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Quadro de atendimentos</h2><p className="text-xs text-muted-foreground">Selecione um status para filtrar ou deslize o quadro para os lados para ver as outras etapas.</p></div><Badge variant="outline">{filter === "todos" ? "Todos" : labelStatus(filter)}</Badge></div>
+        <div className="flex min-w-0 w-full items-start gap-3 overflow-x-auto overscroll-x-contain pb-4" role="list" aria-label="Colunas de atendimento por status">
+          {visibleColumns.map(col => <Card key={col.key} role="listitem" className={`min-w-0 w-[min(310px,calc(100vw-2.5rem))] shrink-0 overflow-hidden border-t-4 ${col.border.replace('border-l-', 'border-t-')} bg-muted/20 shadow-sm`}>
+            <div className="flex items-center justify-between gap-3 border-b bg-card px-4 py-3"><div className="flex min-w-0 items-center gap-2"><col.icon className={`h-4 w-4 shrink-0 ${col.color}`}/><h3 className="text-sm font-semibold leading-snug">{col.label}</h3></div><Badge variant="secondary" className="tabular-nums">{groupedCalls[col.key]?.length || 0}</Badge></div>
+            <CardContent className="space-y-3 p-3">
               {(groupedCalls[col.key] || []).map(call => <div key={call.id} className="group relative">
-                <button type="button" className="block w-full rounded-lg border bg-card p-2.5 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void open(call)}> 
-                <div className="flex items-start justify-between gap-2 pr-16"><p className="line-clamp-2 font-semibold leading-snug">{"Simulação"}</p></div>
+                <button type="button" className="block w-full rounded-lg border bg-card p-3.5 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void open(call)}> 
+                <div className="flex items-start justify-between gap-2 pr-9"><p className="break-words font-semibold leading-snug">{"Simulação"}</p></div>
                 <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2"><UserRound className="mt-0.5 h-3.5 w-3.5 shrink-0"/><span className="break-words">{call.contact_name || "Contato não informado"}{call.contact_role ? ` · ${call.contact_role}` : ""}</span></div>
                   <div className="flex items-start gap-2"><Phone className="mt-0.5 h-3.5 w-3.5 shrink-0"/><span>{call.dialed_phone || "Telefone não informado"}</span></div>
@@ -240,14 +158,6 @@ export default function AtendimentoDev() {
                 {Boolean(call.do_not_contact) && <p className="mt-2 text-xs font-medium text-destructive">Não realizar novos contatos</p>}
                 <div className="mt-3 flex items-center gap-1.5 border-t pt-3 text-xs font-medium text-primary"><MessageSquareText className="h-3.5 w-3.5"/>Abrir detalhes e histórico</div>
                 </button>
-                <div className="absolute right-10 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-card">
-                  <Checkbox
-                    aria-label={`Selecionar ligação de ${call.contact_name || call.company_name || "Simulação"} em ${localTime(call.started_at)}`}
-                    checked={selectedIds.has(call.id)}
-                    disabled={deleting}
-                    onCheckedChange={checked => toggleCallSelection(call.id, checked === true)}
-                  />
-                </div>
                 <button
                   type="button"
                   className="absolute right-2 top-2 z-10 rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
@@ -266,28 +176,6 @@ export default function AtendimentoDev() {
         <p className="mt-4 text-xs text-muted-foreground">Atualização automática a cada 20 segundos. Sem resposta permite nova tentativa; Retorno autorizado indica permissão e histórico anterior. O bloqueio de novos contatos permanece dentro de Recusado.</p>
       </section>
     </div>
-    <AlertDialog open={pendingBatchIds.length > 0} onOpenChange={visible => { if (!visible && !deleting) setPendingBatchIds([]); }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Excluir {pendingBatchIds.length} {pendingBatchIds.length === 1 ? "ligação" : "ligações"}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Você selecionou {pendingBatchIds.length} {pendingBatchIds.length === 1 ? "ligação" : "ligações"}.
-            Todas as ligações selecionadas e seus respectivos históricos de conversa serão excluídos permanentemente.
-            As demais ligações não serão afetadas. Esta ação não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={deleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={event => { event.preventDefault(); void deleteSelectedCalls(); }}
-          >
-            {deleting ? "Excluindo…" : `Sim, excluir ${pendingBatchIds.length} ${pendingBatchIds.length === 1 ? "ligação" : "ligações"}`}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
     <AlertDialog open={!!pendingDelete} onOpenChange={visible => { if (!visible && !deleting) setPendingDelete(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>

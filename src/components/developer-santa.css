@@ -1,0 +1,38 @@
+/* Ilustração do usuário: pequeno Papai Noel no canto inferior do perfil.
+   Duas imagens WebP transparentes somando ~3,6 KB; só a mão anima. */
+.dev-role-santa {
+  position: absolute;
+  z-index: 3;
+  right: 3px;
+  bottom: -8px;
+  width: 43px;
+  height: 49px;
+  line-height: 0;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.16));
+}
+.dev-role-santa img {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.dev-role-santa-wave {
+  transform-origin: 84% 37%;
+  animation: dev-role-santa-wave 5s ease-in-out infinite;
+}
+@keyframes dev-role-santa-wave {
+  0%, 61%, 100% { transform: rotate(0deg); }
+  67% { transform: rotate(-18deg); }
+  73% { transform: rotate(14deg); }
+  79% { transform: rotate(-15deg); }
+  85% { transform: rotate(12deg); }
+  91% { transform: rotate(-8deg); }
+  97% { transform: rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-role-santa-wave { animation: none; }
+}

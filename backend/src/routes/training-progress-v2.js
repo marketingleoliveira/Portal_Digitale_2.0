@@ -78,20 +78,40 @@ async function getDetails(sellers){
  const ids=sellers.map(s=>s.id), marks=ids.map(()=>'?').join(',');
  const [progress]=await db.query(`SELECT p.user_id,l.course_id,p.lesson_id FROM training_lesson_progress_v2 p JOIN training_lessons_v2 l ON l.id=p.lesson_id JOIN training_courses_v2 c ON c.id=l.course_id WHERE c.status='published' AND p.user_id IN (${marks})`,ids);
  const [watched]=await db.query(`SELECT v.user_id,l.course_id,v.lesson_id FROM training_commercial_video_progress_v3 v JOIN training_lessons_v2 l ON l.id=v.lesson_id WHERE v.user_id IN (${marks})`,ids);
- const [comm]=await db.query(`SELECT user_id,course_id,lesson_id,kind,score,passed FROM training_commercial_sessions_v3 WHERE kind IN ('activity','exam') AND status='completed' AND user_id IN (${marks}) ORDER BY finished_at,id`,ids);
+ // Somente tentativas realmente concluidas. Ordenar pelo termino garante
+ // que a nota da prova exibida sera da ULTIMA tentativa, nao a maior nota.
+ const [comm]=await db.query(`SELECT user_id,course_id,lesson_id,kind,score,passed,finished_at,created_at
+   FROM training_commercial_sessions_v3
+   WHERE kind IN ('activity','exam') AND status='completed' AND user_id IN (${marks})
+   ORDER BY COALESCE(finished_at,created_at),id`,ids);
  const [legacy]=await db.query(`SELECT user_id,course_id,MAX(score) AS score FROM training_assessment_results_v2 WHERE user_id IN (${marks}) GROUP BY user_id,course_id`,ids);
  return sellers.map(seller=>{
   const allScores=[];
   const data=courses.map(c=>{
    const done=new Set(progress.filter(p=>p.user_id===seller.id&&p.course_id===c.id).map(p=>p.lesson_id));
-   const activity=new Map();let exam=null;
+   const activity=new Map();
    const records=comm.filter(a=>a.user_id===seller.id&&a.course_id===c.id);
-   for(const a of records){if(a.kind==='activity'&&!activity.has(a.lesson_id)){activity.set(a.lesson_id,a);done.add(a.lesson_id);}else if(a.kind==='exam'&&(!exam||Number(a.passed)>Number(exam.passed)))exam=a;}
-   const scores=c.id===COMMERCIAL?[...activity.values(),...(exam?[exam]:[])].filter(a=>a.score!=null).map(a=>Number(a.score)):legacy.filter(a=>a.user_id===seller.id&&a.course_id===c.id&&a.score!=null).map(a=>Number(a.score));
+   for(const a of records){
+    if(a.kind==='activity'&&!activity.has(a.lesson_id)){
+     activity.set(a.lesson_id,a);
+     done.add(a.lesson_id);
+    }
+   }
+   const exams=records.filter(a=>a.kind==='exam');
+   const latestExam=exams.length?exams[exams.length-1]:null;
+   const hasPassedExam=exams.some(a=>Number(a.passed)===1);
+   // A media das atividades nao inclui a prova final: sao dois indicadores distintos.
+   const scores=c.id===COMMERCIAL?[...activity.values()].filter(a=>a.score!=null).map(a=>Number(a.score)):legacy.filter(a=>a.user_id===seller.id&&a.course_id===c.id&&a.score!=null).map(a=>Number(a.score));
    allScores.push(...scores);
    const total=Number(c.total_lessons),completed=Math.min(total,done.size),started=completed>0||watched.some(v=>v.user_id===seller.id&&v.course_id===c.id)||records.length>0;
-   const finished=total>0&&completed===total&&(c.id!==COMMERCIAL||Number(exam?.passed)===1);
-   return {...c,total_lessons:total,completed_lessons:completed,progress:percent(completed,total),status:!total?'without_lessons':finished?'completed':started?'in_progress':'not_started',best_score:mean(scores),average_score:mean(scores),exam_score:exam?.score==null?null:Number(exam.score),score_count:scores.length};
+   // Uma aprovacao anterior continua valida para conclusao do treinamento.
+   const finished=total>0&&completed===total&&(c.id!==COMMERCIAL||hasPassedExam);
+   return {...c,total_lessons:total,completed_lessons:completed,progress:percent(completed,total),status:!total?'without_lessons':finished?'completed':started?'in_progress':'not_started',
+    best_score:mean(scores),average_score:mean(scores),activity_average_score:c.id===COMMERCIAL?mean(scores):null,
+    exam_score:latestExam?.score==null?null:Number(latestExam.score),
+    exam_passed:latestExam?Number(latestExam.passed)===1:null,
+    exam_finished_at:latestExam?.finished_at||latestExam?.created_at||null,
+    exam_attempts:exams.length,score_count:scores.length};
   });
   const total=data.reduce((n,c)=>n+c.total_lessons,0), completed=data.reduce((n,c)=>n+c.completed_lessons,0);
   return {seller,summary:{total_courses:data.length,completed_courses:data.filter(c=>c.status==='completed').length,total_lessons:total,completed_lessons:completed,progress:mean(data.filter(c=>c.total_lessons>0).map(c=>c.progress??0)),average_score:mean(allScores),score_count:allScores.length},courses:data};

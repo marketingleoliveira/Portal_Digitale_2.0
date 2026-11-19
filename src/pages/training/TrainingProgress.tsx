@@ -39,6 +39,11 @@ type Course = {
   progress: number | null;
   status: string;
   best_score: number | null;
+  activity_average_score: number | null;
+  exam_score: number | null;
+  exam_passed: boolean | null;
+  exam_finished_at: string | null;
+  exam_attempts: number;
 };
 
 type Overview = { summary: Summary; seller_count: number; started_count: number; finished_count: number; courses: {id:string;title:string;total:number;completed:number;in_progress:number;not_started:number;progress:number|null}[] };
@@ -50,6 +55,22 @@ type Detail = {
 };
 
 const NAVY = '#1F3147';
+const COMMERCIAL_COURSE = 'a7c54ef2-b9a3-4a28-9d11-261116000001';
+// As notas são armazenadas em porcentagem (0 a 100); no progresso
+// elas são exibidas também na escala de 0 a 10.
+const grade10 = (score: number | null | undefined) =>
+  score == null ? '—' : (score / 10).toLocaleString('pt-BR', {
+    minimumFractionDigits: 1, maximumFractionDigits: 1
+  });
+const completedDate = (date: string | null | undefined) => {
+  if (!date) return null;
+  const parsed = new Date(date);
+  return Number.isFinite(parsed.getTime())
+    ? parsed.toLocaleString('pt-BR', {
+      dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo'
+    })
+    : null;
+};
 const statusNames: Record<string, string> = {
   completed: 'Concluído',
   in_progress: 'Em andamento',
@@ -155,6 +176,8 @@ export default function TrainingProgress() {
   }
 
   const summary = selectedId==='all'?overview?.summary:detail?.summary;
+  const commercialCourse = selectedId==='all'
+    ? undefined : detail?.courses.find(course => course.id === COMMERCIAL_COURSE);
 
   const metrics = [
     {
@@ -179,13 +202,21 @@ export default function TrainingProgress() {
       icon: BookOpenCheck
     },
     {
-      label: 'Nota média',
-      value: summary?.average_score === null ||
-        summary?.average_score === undefined
-          ? '—'
-          : (summary.average_score / 10).toFixed(1).replace('.', ','),
+      label: selectedId==='all' ? 'Nota média' : 'Média das atividades',
+      value: grade10(summary?.average_score),
       icon: Award
-    }
+    },
+    ...(selectedId !== 'all' ? [{
+      label: 'Prova final (20 questões)',
+      value: commercialCourse?.exam_score == null
+        ? 'Não realizada'
+        : grade10(commercialCourse.exam_score) + ' / 10',
+      icon: GraduationCap,
+      detail: commercialCourse?.exam_score == null
+        ? 'Nenhuma prova final concluída'
+        : (commercialCourse.exam_passed ? 'Aprovado' : 'Não aprovado') +
+          ' · ' + (commercialCourse.exam_score.toLocaleString('pt-BR') + '%')
+    }] : [])
   ].filter(item => selectedId !== 'all' || item.label !== 'Aulas concluídas');
 
   return (
@@ -245,7 +276,7 @@ export default function TrainingProgress() {
         </Card>
 
         {!loading && !loadingDetail && summary && (
-            <div className={selectedId==='all'?'grid grid-cols-1 sm:grid-cols-3 gap-4':'grid grid-cols-2 xl:grid-cols-4 gap-4'}>
+            <div className={selectedId==='all'?'grid grid-cols-1 sm:grid-cols-3 gap-4':'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4'}>
               {metrics.map(item => {
                 const Icon = item.icon;
                 return (
@@ -257,9 +288,12 @@ export default function TrainingProgress() {
                         </span>
                         <Icon className="h-5 w-5 text-[#1F3147]" />
                       </div>
-                      <p className="text-2xl font-semibold">
+                      <p className={item.value === 'Não realizada' ? 'text-lg font-semibold' : 'text-2xl font-semibold'}>
                         {item.value}
                       </p>
+                      {'detail' in item && item.detail && (
+                        <p className="text-xs text-muted-foreground">{item.detail}</p>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -360,13 +394,53 @@ export default function TrainingProgress() {
                       />
                     </div>
 
-                    <p className="text-sm text-muted-foreground">
-                      Nota média das avaliações: {
-                        course.best_score === null
-                          ? 'Não disponível'
-                          : (course.best_score / 10).toFixed(1).replace('.', ',')
-                      }
-                    </p>
+                    {course.id === COMMERCIAL_COURSE ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                          <p className="text-sm text-muted-foreground">Média das 10 atividades</p>
+                          <p className="text-xl font-semibold text-[#1F3147]">
+                            {course.activity_average_score == null
+                              ? 'Ainda não disponível'
+                              : grade10(course.activity_average_score) + ' / 10'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Média das atividades concluídas, sem incluir a prova final.
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                          <p className="text-sm text-muted-foreground">Última prova final · 20 questões</p>
+                          {course.exam_score == null ? (
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Ainda não realizada
+                            </p>
+                          ) : (
+                            <>
+                              <p className="text-xl font-semibold text-[#1F3147]">
+                                {grade10(course.exam_score)} / 10
+                                <span className="text-sm font-normal text-muted-foreground ml-2">
+                                  ({course.exam_score.toLocaleString('pt-BR')}%)
+                                </span>
+                              </p>
+                              <Badge variant="outline" className={course.exam_passed
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                : 'border-amber-200 bg-amber-50 text-amber-800'}>
+                                {course.exam_passed ? 'Aprovado' : 'Não aprovado'}
+                              </Badge>
+                              {completedDate(course.exam_finished_at) && (
+                                <p className="text-xs text-muted-foreground">
+                                  Concluída em {completedDate(course.exam_finished_at)}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Nota média das avaliações: {course.best_score === null
+                          ? 'Não disponível' : grade10(course.best_score) + ' / 10'}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -382,7 +456,7 @@ export default function TrainingProgress() {
 
         <p className="text-xs text-muted-foreground">
           Os resultados são calculados a partir dos registros do MariaDB.
-          A abertura de um material não é considerada conclusão de aula. A nota média é apresentada na escala de 0 a 10 e considera avaliações entregues, inclusive notas baixas; ausência de nota não equivale a zero. O progresso geral é a média dos percentuais individuais, incluindo vendedores que ainda não iniciaram (0%). No treinamento comercial, a conclusão do curso exige aprovação na prova final.
+          A abertura de um material não é considerada conclusão de aula. As notas são apresentadas na escala de 0 a 10; a média das atividades não inclui a prova final. A nota da prova final corresponde à última tentativa concluída, incluindo resultados abaixo da aprovação; uma prova não realizada não equivale a zero. O progresso geral é a média dos percentuais individuais, incluindo vendedores que ainda não iniciaram (0%). No treinamento comercial, a conclusão do curso exige aprovação na prova final.
         </p>
       </div>
       <AlertDialog open={!!resetTarget} onOpenChange={open=>{if(!open&&!resetting)setResetTarget(null);}}>

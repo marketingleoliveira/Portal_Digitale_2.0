@@ -7,7 +7,7 @@ import {domainOf,excludedDomain} from './prospecting-auto-verification.mjs';
 import {contactLinks} from './prospecting-site-pages.mjs';
 import {VERIFICATION_POLICY,recoverableCandidate,recoverCandidate} from './prospecting-candidate-recovery.mjs';
 
-const commercialTerms=['fabricante de','confecção de','fábrica de','produção própria de','confecção private label de'];
+const commercialTerms=['confecção de','fábrica de','indústria de confecções de','fabricante de','produção própria de','confecção private label de'];
 const paulistaCities=['Americana','Campinas','São José do Rio Preto','Sorocaba','São José dos Campos','Ribeirão Preto','Franca','Birigui','Guarulhos','Osasco','Santo André','São Bernardo do Campo','Indaiatuba','Santa Bárbara d\'Oeste','Nova Odessa','Limeira','Piracicaba','Jundiaí','São Carlos','Araraquara','Bauru','Marília','Presidente Prudente','Brás São Paulo','Cerquilho','Tietê','Ibitinga','Laranjal Paulista','Mogi das Cruzes','Itatiba','Atibaia','Bragança Paulista','Hortolândia','Sumaré','São Roque','Santos'];
 export const SEARCH_SPAN=DEFAULT_SETTINGS.states.length*(paulistaCities.length+1)*DEFAULT_SETTINGS.segments.length*commercialTerms.length*3*2;
 export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
@@ -15,15 +15,17 @@ export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
   const states=[...new Set(settings.states)].sort();
   let segments=settings.segments.map(s=>s.trim()).filter(Boolean);
   // O CNAE 1412-6/01 cobre peças de vestuário; prioriza o segmento já configurado.
-  if(settings.cnaes?.includes('1412601'))segments=[...new Set(['vestuário','roupas de alfaiataria','moda feminina','moda masculina','moda infantil','camisetas','jeans',...segments])];
+  if(settings.cnaes?.includes('1412601'))segments=[...new Set(['roupas','vestuário','peças de vestuário','moda feminina','moda masculina','moda infantil','camisetas','jeans','alfaiataria',...segments])];
   if(!states.length||!segments.length)throw Error('search_regions_empty');
   // Alterna peças/segmentos antes de repetir dezenas de buscas do mesmo produto.
   const uf=states[cursor%states.length],regionalCursor=Math.floor(cursor/states.length);
   const cities=uf==='SP'?['',...paulistaCities]:[''];
   const city=cities[Math.floor(regionalCursor/segments.length)%cities.length];
+  // Priorizacao de confeccionistas de vestuario no ciclo de buscas.
+  // Mantem variacao geográfica e de segmentos; nao elimina verificação CNPJ/site.
   const segment=segments[regionalCursor%segments.length];
   const variant=Math.floor(regionalCursor/(cities.length*segments.length));
-  const term=commercialTerms[variant%commercialTerms.length];
+  const term=commercialTerms[regionalCursor%commercialTerms.length];
   const page=1;
   const identityHint='';
   return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]}${identityHint}`,pageno:page,engines:'duckduckgo'};
@@ -397,7 +399,7 @@ export async function discoverCandidates(db,cursor,{fetchSearch=fetch,fetchSite=
     }catch{}
   }
   const seen=new Set();
-  for(const result of body.results.slice(0,40)) {
+  for(const result of body.results.slice(0,60)) {
     const candidate=discoveryResult(result);if(!candidate||seen.has(candidate.domain))continue;
     seen.add(candidate.domain);
     if(!existingDomains.has(candidate.domain)){
@@ -406,7 +408,7 @@ export async function discoverCandidates(db,cursor,{fetchSearch=fetch,fetchSite=
     }
     const existing=existingDomains.get(candidate.domain);
     if(existing&&!recoverableCandidate(existing))continue;
-    if(checked>=8)break;
+    if(checked>=12)break;
     checked++;
     let official=null;
     // Search snippets only nominate a site. Production evidence must be fetched

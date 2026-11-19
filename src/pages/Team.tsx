@@ -132,25 +132,29 @@ const Team: React.FC = () => {
     };
 
     return (
-      <Card 
-        className="hover:shadow-lg transition-shadow cursor-pointer"
+      <Card
+        className="min-w-0 w-full h-full hover:shadow-lg transition-shadow cursor-pointer"
         onClick={() => handleMemberClick(member)}
       >
-        <CardContent className={`${sizeClasses[size]} flex flex-col items-center text-center`}>
-          <Avatar className={`${avatarSizes[size]} mb-3`}>
+        <CardContent className={`${sizeClasses[size]} min-w-0 w-full h-full flex flex-col items-center text-center`}>
+          <Avatar className={`${avatarSizes[size]} mb-3 shrink-0`}>
             <AvatarImage src={member.avatar_url || undefined} />
             <AvatarFallback className={textSizes[size]}>
               {member.full_name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <h3 className={`font-semibold ${textSizes[size]} line-clamp-1`}>
+          <h3 className={`w-full min-w-0 min-h-[2.5rem] font-semibold leading-5 ${textSizes[size]} line-clamp-2 [overflow-wrap:anywhere]`} title={member.full_name}>
             {member.full_name}
           </h3>
-          <p className="text-muted-foreground text-sm line-clamp-1 mb-2">
+          <p className="w-full min-w-0 min-h-[2.5rem] text-muted-foreground text-xs sm:text-sm leading-5 line-clamp-2 break-all mb-2" title={member.email}>
             {member.email}
           </p>
-          <div className="flex items-center gap-1 mb-2">
-            {member.role && <RoleBadge role={member.role} region={member.region} size="sm" />}
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-1 mt-auto">
+            {member.role && (
+              <div className="min-w-0 max-w-full [&>div]:max-w-full [&>div]:justify-center [&>div]:whitespace-normal [&>div]:text-center">
+                <RoleBadge role={member.role} region={member.region} size="sm" />
+              </div>
+            )}
             {member.phone && (
               <Button
                 size="icon"
@@ -201,7 +205,7 @@ const Team: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 animate-fade-in">
+      <div className="min-w-0 w-full max-w-full space-y-8 animate-fade-in">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold">Equipe</h1>
@@ -221,7 +225,7 @@ const Team: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                 {diretoriaMembers.map((member) => (
                   <MemberCard key={member.id} member={member} />
                 ))}
@@ -243,7 +247,7 @@ const Team: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                 {gerenciaMembers.map((member) => (
                   <MemberCard key={member.id} member={member} />
                 ))}
@@ -265,7 +269,7 @@ const Team: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                 {devMembers.map((member) => (
                   <MemberCard key={member.id} member={member} />
                 ))}
@@ -297,7 +301,7 @@ const Team: React.FC = () => {
                   <Badge variant="secondary" className="ml-2">{admins.length}</Badge>
                 </div>
                 <div className="flex justify-center">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-3xl">
+                  <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4 max-w-3xl">
                     {admins.map((member) => (
                       <MemberCard key={member.id} member={member} size="lg" />
                     ))}
@@ -322,7 +326,7 @@ const Team: React.FC = () => {
                   <Badge variant="secondary" className="ml-2">{gerentes.length}</Badge>
                 </div>
                 <div className="flex justify-center">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl">
+                  <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4 max-w-4xl">
                     {gerentes.map((member) => (
                       <MemberCard key={member.id} member={member} />
                     ))}
@@ -346,7 +350,7 @@ const Team: React.FC = () => {
                   <h3 className="font-semibold text-lg">Marketing</h3>
                   <Badge variant="secondary" className="ml-2">{marketing.length}</Badge>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                   {marketing.map((member) => (
                     <MemberCard key={member.id} member={member} size="sm" />
                   ))}
@@ -362,12 +366,12 @@ const Team: React.FC = () => {
             {/* SDR - Prospecção de Leads */}
             {sdrs.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Target className="w-5 h-5 text-role-sdr" />
                   <h3 className="font-semibold text-lg">SDR — Prospecção de Leads</h3>
                   <Badge variant="secondary" className="ml-2">{sdrs.length}</Badge>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                   {sdrs.map((member) => (
                     <MemberCard key={member.id} member={member} size="sm" />
                   ))}
@@ -389,7 +393,7 @@ const Team: React.FC = () => {
                   <h3 className="font-semibold text-lg">Criação</h3>
                   <Badge variant="secondary" className="ml-2">{criacao.length}</Badge>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                   {criacao.map((member) => (
                     <MemberCard key={member.id} member={member} size="sm" />
                   ))}
@@ -412,7 +416,7 @@ const Team: React.FC = () => {
                   <h3 className="font-semibold text-lg">Qualidade</h3>
                   <Badge variant="secondary" className="ml-2">{qualidade.length}</Badge>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                   {qualidade.map((member) => (
                     <MemberCard key={member.id} member={member} size="sm" />
                   ))}
@@ -427,7 +431,7 @@ const Team: React.FC = () => {
                   <h3 className="font-semibold text-lg">Financeiro</h3>
                   <Badge variant="secondary" className="ml-2">{financeiro.length}</Badge>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                   {financeiro.map((member) => (
                     <MemberCard key={member.id} member={member} size="sm" />
                   ))}
@@ -444,7 +448,7 @@ const Team: React.FC = () => {
                   <h3 className="font-semibold text-lg">Equipe Comercial</h3>
                   <Badge variant="secondary" className="ml-2">{vendedores.length}</Badge>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,215px),1fr))] gap-4">
                   {vendedores.map((member) => (
                     <MemberCard key={member.id} member={member} size="sm" />
                   ))}
@@ -463,53 +467,53 @@ const Team: React.FC = () => {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div className="grid min-w-0 w-full grid-cols-[repeat(auto-fit,minmax(min(100%,145px),1fr))] gap-4">
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-primary">{members.length}</p>
-              <p className="text-sm text-muted-foreground">Total de Membros</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">Total de Membros</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-role-admin">{admins.length}</p>
-              <p className="text-sm text-muted-foreground">Diretores</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">Diretores</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-role-gerente">{gerentes.length}</p>
-              <p className="text-sm text-muted-foreground">Gerentes</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">Gerentes</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-role-criacao">{criacao.length}</p>
-              <p className="text-sm text-muted-foreground">Criação</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">Criação</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-role-marketing">{marketing.length}</p>
-              <p className="text-sm text-muted-foreground">Marketing</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">Marketing</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-role-sdr">{sdrs.length}</p>
-              <p className="text-sm text-muted-foreground">SDR</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">SDR</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-role-vendedor">{vendedores.length}</p>
-              <p className="text-sm text-muted-foreground">Vendedores</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">Vendedores</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="flex h-full min-h-[112px] flex-col items-center justify-center gap-1 px-3 py-4 text-center">
               <p className="text-3xl font-bold text-teal-500">{qualidade.length}</p>
-              <p className="text-sm text-muted-foreground">Qualidade</p>
+              <p className="max-w-full text-xs sm:text-sm text-muted-foreground leading-5 break-words">Qualidade</p>
             </CardContent>
           </Card>
         </div>
@@ -538,12 +542,12 @@ const Team: React.FC = () => {
                   )}
                 </div>
 
-                <div className="w-full space-y-3">
+                <div className="w-full min-w-0 space-y-3">
                   <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                     <Mail className="w-4 h-4 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="font-medium text-sm">{selectedMember.email}</p>
+                      <p className="font-medium text-sm break-all">{selectedMember.email}</p>
                     </div>
                   </div>
                   
@@ -575,7 +579,7 @@ const Team: React.FC = () => {
                     <Linkedin className="w-4 h-4 text-[#0A66C2]" />
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">LinkedIn</p>
-                      <p className="font-medium text-sm">{selectedMember.linkedin || 'Não informado'}</p>
+                      <p className="font-medium text-sm break-all">{selectedMember.linkedin || 'Não informado'}</p>
                     </div>
                     {selectedMember.linkedin && (
                       <Button

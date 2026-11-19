@@ -16,6 +16,10 @@ import { AppRole, ROLE_LABELS } from "@/types/auth";
 import { navItems, NavItem } from "@/config/navigation";
 import { useErpSettings, MenuVisibility } from "@/hooks/useErpSettings";
 import {
+  DEFAULT_SANTA_SETTINGS, SANTA_CUTOFF, type SeasonalSantaSettings,
+  useSeasonalSantaSettings,
+} from "@/hooks/useSeasonalSantaSettings";
+import {
   SlidersHorizontal,
   Eye,
   EyeOff,
@@ -26,6 +30,7 @@ import {
   Database,
   Search,
   ShieldCheck,
+  Gift,
 } from "lucide-react";
 
 const MANAGEABLE_ROLES = (Object.keys(ROLE_LABELS) as AppRole[]).filter((r) => r !== "dev");
@@ -50,6 +55,45 @@ const ErpSettings: React.FC = () => {
   const { hiddenMenus, loading, saveHiddenMenus } = useErpSettings();
   const [draft, setDraft] = useState<MenuVisibility>({});
   const [saving, setSaving] = useState(false);
+
+  const {
+    settings: santaSettings,
+    loading: santaLoading,
+    readError: santaReadError,
+    refresh: refreshSanta,
+    saveSettings: saveSantaSettings,
+  } = useSeasonalSantaSettings();
+  const [santaDraft, setSantaDraft] = useState<SeasonalSantaSettings>(DEFAULT_SANTA_SETTINGS);
+  const [savingSanta, setSavingSanta] = useState(false);
+  const santaDirty = useMemo(
+    () => JSON.stringify(santaDraft) !== JSON.stringify(santaSettings),
+    [santaDraft, santaSettings],
+  );
+  useEffect(() => { setSantaDraft(santaSettings); }, [santaSettings]);
+
+  const toggleSantaRole = (role: AppRole, checked: boolean) => {
+    setSantaDraft((previous) => ({
+      ...previous,
+      roles: checked
+        ? [...previous.roles.filter((r) => r !== role), role]
+        : previous.roles.filter((r) => r !== role),
+    }));
+  };
+
+  const handleSaveSanta = async () => {
+    if (santaDraft.enabled && santaDraft.roles.length === 0) {
+      toast.error("Selecione pelo menos um cargo para exibir o Papai Noel.");
+      return;
+    }
+    setSavingSanta(true);
+    try {
+      const saved = await saveSantaSettings(santaDraft);
+      if (saved) toast.success("Papai Noel atualizado para os cargos selecionados.");
+      else toast.error("Não foi possível salvar. Apenas o Desenvolvedor pode alterar.");
+    } finally {
+      setSavingSanta(false);
+    }
+  };
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -414,7 +458,138 @@ const ErpSettings: React.FC = () => {
           </TabsContent>
 
           {/* ---------------- SISTEMA ---------------- */}
-          <TabsContent value="sistema" className="mt-4">
+          <TabsContent value="sistema" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2">
+                    <Gift className="h-5 w-5 text-primary" />
+                    Papai Noel do Portal
+                  </CardTitle>
+                  <CardDescription>
+                    Controle a decoração natalina da barra lateral e escolha os cargos
+                    que podem vê-la. O aceno acontece a cada 5 segundos.
+                  </CardDescription>
+                </div>
+                <img
+                  src="/santa/santa-body.webp"
+                  width="48"
+                  height="55"
+                  alt="Prévia do Papai Noel"
+                  className="h-14 w-auto shrink-0 object-contain"
+                  loading="lazy"
+                />
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {santaLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando configurações...
+                  </div>
+                ) : santaReadError ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-destructive">
+                      Não foi possível carregar a configuração atual. Nenhuma alteração foi realizada.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => { void refreshSanta(); }}>
+                      Tentar novamente
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="santa-enabled" className="font-medium">Exibir Papai Noel</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Desative para ocultar imediatamente de todos os cargos.
+                        </p>
+                      </div>
+                      <Switch
+                        id="santa-enabled"
+                        checked={santaDraft.enabled}
+                        onCheckedChange={(checked) => setSantaDraft((old) => ({
+                          ...old,
+                          enabled: checked,
+                          // Depois do Natal, ativar manualmente dispensa a
+                          // desativação automática de 26/12.
+                          autoDisableOnDec26: checked && Date.now() >= SANTA_CUTOFF
+                            ? false : old.autoDisableOnDec26,
+                        }))}
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium">Cargos que podem visualizar</p>
+                        <p className="text-xs text-muted-foreground">
+                          Selecione os cargos autorizados. As alterações terão efeito após salvar.
+                        </p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {(Object.keys(ROLE_LABELS) as AppRole[]).map((role) => (
+                          <label key={role}
+                            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
+                            <span>{ROLE_LABELS[role]}</span>
+                            <Switch
+                              checked={santaDraft.roles.includes(role)}
+                              onCheckedChange={(checked) => toggleSantaRole(role, checked)}
+                              aria-label={`Permitir Papai Noel para ${ROLE_LABELS[role]}`}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="santa-auto-end" className="font-medium">
+                          Desativação automática em 26/12/2026
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          À meia-noite, horário de Brasília. Desligue esta opção para
+                          manter o Papai Noel ativo quando quiser, inclusive depois do Natal.
+                        </p>
+                      </div>
+                      <Switch
+                        id="santa-auto-end"
+                        checked={santaDraft.autoDisableOnDec26}
+                        onCheckedChange={(checked) => setSantaDraft((old) => ({
+                          ...old, autoDisableOnDec26: checked,
+                        }))}
+                      />
+                    </div>
+
+                    {santaDraft.enabled && santaDraft.autoDisableOnDec26 &&
+                      Date.now() >= SANTA_CUTOFF && (
+                        <p className="text-sm text-amber-600">
+                          A data de encerramento já passou. Desligue a desativação automática
+                          para voltar a exibir o Papai Noel.
+                        </p>
+                      )}
+
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button variant="outline" size="sm"
+                        disabled={!santaDirty || savingSanta}
+                        onClick={() => setSantaDraft(santaSettings)}>
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Desfazer
+                      </Button>
+                      <Button size="sm"
+                        onClick={handleSaveSanta}
+                        disabled={savingSanta || !santaDirty ||
+                          (santaDraft.enabled && santaDraft.roles.length === 0)}>
+                        {savingSanta ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Salvar Papai Noel
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>

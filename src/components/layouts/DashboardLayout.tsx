@@ -8,6 +8,7 @@ import { useActiveMeetings } from "@/hooks/useActiveMeetings";
 import Logo from "@/components/Logo";
 import SustainabilityBadge from "@/components/SustainabilityBadge";
 import RoleBadge from "@/components/RoleBadge";
+import DeveloperSanta from "@/components/DeveloperSanta";
 import AdSlot from "@/components/AdSlot";
 import { Button } from "@/components/ui/button";
 import {
@@ -445,7 +446,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </nav>
 
             {/* User Info */}
-            <div className="p-4 border-t border-sidebar-border">
+            <div className="relative p-4 border-t border-sidebar-border">
+              {/* Adorno sazonal da barra lateral, controlado por cargos nas Configurações do ERP. */}
+              {user?.role && <DeveloperSanta role={user.role} />}
 
               <div className="flex items-center gap-3 px-2">
                 {user?.profile?.avatar_url ? (
