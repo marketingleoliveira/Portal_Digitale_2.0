@@ -12,6 +12,7 @@ import { requireAuth } from "./lib/auth.js";
 import { readFile } from "node:fs/promises";
 
 import meetingRoutes from "./routes/meetings.js";
+import internalLivekitVoiceRoutes from "./routes/internal-livekit-voice.js";
 import recordingRoutes from "./routes/recordings.js";
 import locationRoutes from "./routes/location.js";
 import presenceUnloadRoutes from "./routes/presence-unload.js";
@@ -133,6 +134,7 @@ app.get("/api/admin/backup-status", requireAuth, async (req, res) => {
   }
 });
 
+app.use("/api/internal/livekit-voice", internalLivekitVoiceRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/recordings", recordingRoutes);
 app.use("/api/location", locationRoutes);

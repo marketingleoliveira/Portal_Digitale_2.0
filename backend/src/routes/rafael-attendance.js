@@ -57,12 +57,30 @@ router.post('/ingest',async(req,res)=>{
 router.get('/',requireAuth,isDev,async(req,res)=>{
  try{
   const search=safe(req.query.q,100).trim(),status=safe(req.query.status,40);
-  let sql='SELECT id,channel,status,do_not_contact,contact_name,company_name,dialed_phone,contact_role,segment,customer_need,article_presented,article_interest,interest_evidence,next_action,last_stage,started_at,ended_at,updated_at FROM rafael_attendance_calls WHERE 1=1';const args=[];
+  const date=safe(req.query.date,20).trim();
+  const midnight=date?Date.parse(date+'T00:00:00Z'):NaN;
+  if(date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(midnight) ||
+      new Date(midnight).toISOString().slice(0,10)!==date)){
+    return res.status(400).json({error:'Data inválida. Use AAAA-MM-DD.'});
+  }
+  // started_at é armazenado em UTC. Este intervalo representa
+  // 00:00-23:59:59 do dia selecionado no horário de Brasília (UTC-3 em 2026).
+  const since=date?new Date(midnight+3*3600000).toISOString().slice(0,19).replace('T',' '):null;
+  const until=date?new Date(midnight+27*3600000).toISOString().slice(0,19).replace('T',' '):null;
+  const dateSql=date?' AND started_at >= ? AND started_at < ?':'';
+  const dateArgs=date?[since,until]:[];
+  const searchSql=' AND (id LIKE ? OR contact_name LIKE ? OR segment LIKE ? OR company_name LIKE ? OR dialed_phone LIKE ? OR article_presented LIKE ? OR customer_need LIKE ?)';
+  const searchArgs=search?Array(7).fill('%'+search+'%'):[];
+  let sql='SELECT id,channel,status,do_not_contact,contact_name,company_name,dialed_phone,contact_role,segment,customer_need,article_presented,article_interest,interest_evidence,next_action,last_stage,started_at,ended_at,updated_at FROM rafael_attendance_calls WHERE 1=1'+dateSql;
+  const args=[...dateArgs];
   if(status&&status!=='todos'&&STATES.has(status)){sql+=' AND status=?';args.push(status);}
-  if(search){sql+=' AND (id LIKE ? OR contact_name LIKE ? OR segment LIKE ? OR company_name LIKE ? OR dialed_phone LIKE ? OR article_presented LIKE ? OR customer_need LIKE ?)';args.push(...Array(7).fill('%'+search+'%'));}
+  if(search){sql+=searchSql;args.push(...searchArgs);}
   sql+=' ORDER BY started_at DESC LIMIT 200';
   const [calls]=await db.execute(sql,args);
-  const [[totals]]=await db.execute('SELECT COUNT(*) total, SUM(status=\'agendado\') agendado, SUM(status=\'em_contato\') em_contato, SUM(status IN (\'recusado\',\'nao_contatar\')) recusado, SUM(status=\'recuperar\') recuperar, SUM(status=\'sem_resposta\') sem_resposta, SUM(status=\'retorno_autorizado\') retorno_autorizado, SUM(status=\'fora_perfil\') fora_perfil FROM rafael_attendance_calls');
+  // Contadores seguem o dia e a busca selecionados, mas não a coluna de status,
+  // para que todas as colunas possam continuar sendo comparadas entre si.
+  const totalsSql='SELECT COUNT(*) total, SUM(status=\'agendado\') agendado, SUM(status=\'em_contato\') em_contato, SUM(status IN (\'recusado\',\'nao_contatar\')) recusado, SUM(status=\'recuperar\') recuperar, SUM(status=\'sem_resposta\') sem_resposta, SUM(status=\'retorno_autorizado\') retorno_autorizado, SUM(status=\'fora_perfil\') fora_perfil FROM rafael_attendance_calls WHERE 1=1'+dateSql+(search?searchSql:'');
+  const [[totals]]=await db.execute(totalsSql,[...dateArgs,...searchArgs]);
   res.json({calls,totals});
  }catch(e){console.error('RAFAEL_ATTENDANCE_LIST',e);res.status(500).json({error:'Falha ao consultar atendimentos'});}
 });

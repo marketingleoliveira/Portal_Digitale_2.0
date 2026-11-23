@@ -7,7 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Handshake, LockKeyhole, PhoneCall, Search, RefreshCcw, Clock, CalendarCheck, MessageSquareText, RotateCcw, PhoneOff, PhoneForwarded, Building2, ChevronRight, UserRound, Phone, Tag, Sparkles, Trash2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Handshake, LockKeyhole, PhoneCall, Search, RefreshCcw, Clock, CalendarCheck, MessageSquareText, RotateCcw, PhoneOff, PhoneForwarded, Building2, ChevronRight, UserRound, Phone, Tag, Sparkles, Trash2, CalendarDays } from "lucide-react";
 
 const filters = [
   { key: "todos", label: "Todos" },
@@ -35,6 +39,9 @@ export default function AtendimentoDev() {
   const token = session?.access_token || "";
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Status>("todos");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const dayFilter = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
   const [calls, setCalls] = useState<Call[]>([]);
   const [totals, setTotals] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -51,6 +58,7 @@ export default function AtendimentoDev() {
     if (!quiet) setLoading(true);
     try {
       const params = new URLSearchParams({ status: filter, q: query });
+      if (dayFilter) params.set("date", dayFilter);
       const response = await fetch(`/api/rafael-attendance?${params}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       if (!response.ok) throw Error(response.status === 403 ? "Acesso exclusivo do cargo Desenvolvedor." : "Não foi possível carregar o histórico.");
       const data = await response.json();
@@ -59,7 +67,7 @@ export default function AtendimentoDev() {
       setError("");
     } catch (e) { setError(e instanceof Error ? e.message : "Erro ao consultar atendimentos"); }
     finally { if (!quiet) setLoading(false); }
-  }, [filter, query, token]);
+  }, [filter, query, token, dayFilter]);
   useEffect(() => { const timer = window.setTimeout(() => void load(), 250); return () => clearTimeout(timer); }, [load]);
   useEffect(() => { const timer = window.setInterval(() => void load(true), 20000); return () => clearInterval(timer); }, [load]);
   const open = async (call: Call) => {
@@ -137,10 +145,31 @@ export default function AtendimentoDev() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar empresa, telefone, contato, segmento ou artigo" className="pl-9" aria-label="Buscar ligações" /></div>
         <Button variant={filter === "todos" ? "default" : "outline"} onClick={() => setFilter("todos")} className="sm:min-w-[130px]">{filter === "todos" ? "Todos os status" : "Limpar filtro"}</Button>
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button variant={selectedDate ? "secondary" : "outline"} size="icon" className="h-10 w-10 shrink-0" aria-label={selectedDate ? "Filtrar ligações de " + format(selectedDate, "dd/MM/yyyy") : "Filtrar ligações por data"} title={selectedDate ? format(selectedDate, "dd/MM/yyyy") : "Filtrar ligações por data"}>
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-auto max-w-[calc(100vw-1.5rem)] p-2">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={date => { if (date) { setSelectedDate(date); setCalendarOpen(false); } }}
+              locale={ptBR}
+              defaultMonth={selectedDate}
+              initialFocus
+            />
+            <div className="flex items-center justify-between gap-2 border-t px-2 pt-2">
+              <span className="text-xs text-muted-foreground">{selectedDate ? format(selectedDate, "dd/MM/yyyy") : "Todas as datas"}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setSelectedDate(undefined); setCalendarOpen(false); }} disabled={!selectedDate}>Limpar data</Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
       {error && <div role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{error}</div>}
       <section aria-label="Quadro de atendimentos">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Quadro de atendimentos</h2><p className="text-xs text-muted-foreground">Selecione um status para filtrar ou deslize o quadro para os lados para ver as outras etapas.</p></div><Badge variant="outline">{filter === "todos" ? "Todos" : labelStatus(filter)}</Badge></div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Quadro de atendimentos</h2><p className="text-xs text-muted-foreground">{selectedDate ? "Ligações iniciadas em " + format(selectedDate, "dd/MM/yyyy") + " (horário de Brasília)." : "Selecione um status para filtrar ou deslize o quadro para os lados para ver as outras etapas."}</p></div><Badge variant="outline">{filter === "todos" ? "Todos" : labelStatus(filter)}</Badge></div>
         <div className="flex min-w-0 w-full items-start gap-3 overflow-x-auto overscroll-x-contain pb-4" role="list" aria-label="Colunas de atendimento por status">
           {visibleColumns.map(col => <Card key={col.key} role="listitem" className={`min-w-0 w-[min(310px,calc(100vw-2.5rem))] shrink-0 overflow-hidden border-t-4 ${col.border.replace('border-l-', 'border-t-')} bg-muted/20 shadow-sm`}>
             <div className="flex items-center justify-between gap-3 border-b bg-card px-4 py-3"><div className="flex min-w-0 items-center gap-2"><col.icon className={`h-4 w-4 shrink-0 ${col.color}`}/><h3 className="text-sm font-semibold leading-snug">{col.label}</h3></div><Badge variant="secondary" className="tabular-nums">{groupedCalls[col.key]?.length || 0}</Badge></div>
