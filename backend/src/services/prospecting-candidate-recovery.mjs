@@ -1,7 +1,8 @@
 // Uma única reavaliação após a correção do verificador, sem reabrir recusas comerciais.
 export const VERIFICATION_POLICY='razao-social-20261117-v3';
 export function recoverableCandidate(row) {
-  if(row?.status!=='rejected')return false;
+  // MAX_TWO_VERIFICATION_ATTEMPTS_20261125: exhausted leads never reopen.
+  if(row?.status!=='rejected'||Number(row.attempts||0)>=2)return false;
   let proof;try{proof=typeof row.proof==='string'?JSON.parse(row.proof):row.proof;}catch{}
   const technical=['cnpj_ausente_ou_invalido','website_cnpj_inconclusive'].includes(row.reason);
   // O classificador antigo não reconhecia "CONFECÇÕES/CONFECCOES".
@@ -18,7 +19,7 @@ export async function recoverCandidate(db,row,official,evidence) {
           '$.verification_policy',?,'$.recovery.previous_reason',?,
           '$.recovery.checked_at',?,'$.discovery',JSON_EXTRACT(?,'$.discovery')),
         c.updated_at=UTC_TIMESTAMP(6)
-    WHERE c.id=? AND c.status='rejected' AND c.reason=?
+    WHERE c.id=? AND c.status='rejected' AND c.reason=? AND c.attempts<2
       AND NOT EXISTS (SELECT 1 FROM prospecting_approved_leads a WHERE a.candidate_id=c.id OR a.cnpj=c.cnpj)
       AND NOT EXISTS (SELECT 1 FROM prospecting_auto_deliveries d WHERE d.candidate_id=c.id OR d.cnpj=c.cnpj)`,
     [official.url,VERIFICATION_POLICY,row.reason,new Date().toISOString(),JSON.stringify(evidence),row.id,row.reason]);

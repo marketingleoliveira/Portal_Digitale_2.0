@@ -26,9 +26,11 @@ export function searchPlan(cursor,settings=DEFAULT_SETTINGS) {
   const segment=segments[regionalCursor%segments.length];
   const variant=Math.floor(regionalCursor/(cities.length*segments.length));
   const term=commercialTerms[regionalCursor%commercialTerms.length];
-  const page=1;
+  // DIGITALE_DISCOVERY_PAGES_V2_2511 — ampliar a pesquisa para paginas 1, 2 e 3.
+  // Alterna por bloco de segmentos e por cidade; evita repetir eternamente a pagina 1.
+  const page=1+(Math.floor(regionalCursor/segments.length)%3);
   const identityHint='';
-  return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]}${identityHint}`,pageno:page,engines:'duckduckgo'};
+  return {q:`${term} ${segment} ${city?city+' ':''}${STATES[uf]}${identityHint}`,pageno:page,engines:'yandex'};
 }
 
 // DIGITALE_REGISTRY_DIRECTORY_GUARD_V12
@@ -346,11 +348,12 @@ if (blockedProspectingSource(result?.url)) return null;
   }
 }
 
+// DIGITALE_PIPELINE_V2_2511 — faster search provider with safe fallbacks.
 async function searchWithFallback(endpoint,fetchSearch) {
   const first=endpoint.searchParams.get('engines');
   let lastError,empty;
   const degraded=[];
-  for(const engine of [...new Set([first,'yahoo','duckduckgo','yandex'])]) {
+  for(const engine of [...new Set([first,'yandex','duckduckgo','yahoo'])]) {
     const url=new URL(endpoint);url.searchParams.set('engines',engine);
     try {
       const response=await fetchSearch(url,{signal:AbortSignal.timeout(12000)});
@@ -361,7 +364,10 @@ async function searchWithFallback(endpoint,fetchSearch) {
       degraded.push(...failed);
       if(body.results.length)return {body,engine,degraded:[...new Set(degraded)]};
       if(failed.length)throw Error('discovery_provider_unavailable');
+      // DIGITALE_SEARCH_UNBLOCK_2511 — resposta valida e vazia nao eh falha;
+      // passe imediatamente a proxima consulta, em vez de aguardar timeout do DDG.
       empty={body,engine,degraded:[...new Set(degraded)]};
+      if(engine==='yandex')return empty;
     }catch(error){lastError=error;degraded.push(engine);}
   }
   if(empty)return empty;

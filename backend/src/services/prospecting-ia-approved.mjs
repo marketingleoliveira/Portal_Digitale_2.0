@@ -1,4 +1,4 @@
-import {getSettings,matchesRegion} from './digitale-ai-settings.mjs';
+import {getSettings,matchesRegion,isClothingManufacturerRegistry} from './digitale-ai-settings.mjs';
 
 import crypto from 'node:crypto';
 import {
@@ -40,7 +40,9 @@ export async function approveOnlyIA(db, proof, candidateId) {
   const registry = proof.registry || {};
 
   const settings=await getSettings(db);
+  // DIGITALE_ONLY_SP_CLOTHING_20261125: permanent gate before any new approval.
   if(!matchesRegion(registry,settings))return {created:false,approved:false,duplicate:false,reason:'outside_target_state'};
+  if(!isClothingManufacturerRegistry(registry))return {created:false,approved:false,duplicate:false,reason:'not_clothing_manufacturer'};
   const decision = evaluateApproval({
     razao_social: registry.legal_name || registry.razao_social,
     cnpj: proof.cnpj || registry.cnpj,
@@ -49,7 +51,7 @@ export async function approveOnlyIA(db, proof, candidateId) {
     cnaes: cnaeValues(registry),
     mei: registry.mei_status ?? registry.mei,
     situacao_cadastral: registry.situacao_cadastral
-  },settings.cnaes?.length?settings.cnaes:undefined);
+  },cnaeValues(registry));
 
   if (!decision.approved) {
     return {

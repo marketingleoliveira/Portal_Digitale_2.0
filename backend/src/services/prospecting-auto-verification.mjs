@@ -1,6 +1,6 @@
 import {hasConfeccaoLegalName} from './prospecting-approval-policy.mjs';
 import { classifyTextileBuyer } from './prospecting-textile-profile.mjs';
-import {DEFAULT_SETTINGS,matchesRegion,matchesCnae,STATES} from './digitale-ai-settings.mjs';
+import {DEFAULT_SETTINGS,matchesRegion,matchesCnae,isClothingManufacturerRegistry,STATES} from './digitale-ai-settings.mjs';
 import {normCnpj,validCnpj,phone,containsCnpj,publishedCnpjs,getPublic,plain,links,socialUrl} from './prospecting-verification.mjs';
 import {OWNER} from './prospecting-policy.mjs';
 import {contactLinks,robotsAllowed} from './prospecting-site-pages.mjs';
@@ -237,6 +237,35 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
     }
     if(index===0)for(const path of ['/contato','/sobre','/quem-somos','/politica-de-privacidade']){const fallback=origin+path;if(!pending.includes(fallback))pending.push(fallback);}
   }
+  // DIGITALE_PIPELINE_V2_2511 — segunda tentativa no proprio dominio, sem liberar robots.
+  if(!pages.length){
+    const original=new URL(root);
+    const host=original.hostname.replace(/^www\./,'');
+    const alternatives=[
+      `${original.protocol}//${original.hostname==='www.'+host?host:'www.'+host}/`,
+      `${original.protocol==='https:'?'http:':'https:'}//${host}/`
+    ];
+    for(const alternate of [...new Set(alternatives)]){
+      if(pages.length>=3)break;
+      try{
+        const altOrigin=new URL(alternate).origin;
+        let altRobots='';
+        try{
+          const rules=await fetchPage(altOrigin+'/robots.txt');
+          altRobots=rules.body;
+        }catch{}
+        const candidates=[alternate,altOrigin+'/contato',altOrigin+'/sobre'];
+        for(const url of candidates){
+          if(!robotsAllowed(altRobots,new URL(url).pathname))continue;
+          try{
+            const page=await fetchPage(url);
+            if(domainOf(page.url)===domain)pages.push(page);
+          }catch{}
+          if(pages.length>=3)break;
+        }
+      }catch{}
+    }
+  }
   // Captura independente da qualificacao comercial.
   // O callback nao implica autorizacao para envio de campanhas.
   const discoveredEmails = [...new Set(
@@ -290,8 +319,9 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
     // Prioriza associacao ao dominio exato.
     // Nao aprova CNPJ por semelhanca de nome.
     const searches = [
-      {q: '"' + domain + '" CNPJ', engines: 'yahoo'},
-      {q: '"' + domain + '" "razao social"', engines: 'duckduckgo'}
+      {q: '"' + domain + '" CNPJ', engines: 'yandex'},
+      {q: '"' + domain + '" "razao social"', engines: 'yandex'},
+      {q: '"' + domain + '" CNPJ', engines: 'yahoo'}
     ];
 
     const possible = new Set();
@@ -383,7 +413,8 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
   if(r.mei_status === true)throw Error('mei_excluded');
   if(r.mei_status !== false)throw Error('mei_status_unconfirmed');
   const legalNameEligible=hasConfeccaoLegalName(r.razao_social);
-  if(!legalNameEligible&&!manufacturing(r))throw Error('not_apparel_manufacturer');
+  // DIGITALE_ONLY_SP_CLOTHING_20261125: nome de confeccao sozinho nao basta.
+  if(!isClothingManufacturerRegistry(r))throw Error('not_apparel_manufacturer');
   if(!matchesCnae(r,settings))throw Error('outside_target_cnae');
   await onProgress('profile',{cnpj,company:r.nome_fantasia||r.razao_social,uf:r.uf});
   const uf=String(r.uf||'').trim().toUpperCase();
@@ -463,7 +494,15 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
   const number=sitePhone||registryPhone;
   if(!number)throw Error('business_phone_missing');
   const phoneSource=sitePhone?'website':'registry';
-  const email=pages.flatMap(page=>pageEmails(page,domain))[0]||null;
+  // DIGITALE_PIPELINE_V2_2511 — contato publicado no proprio site ou no cadastro oficial.
+  // Nao inferir emails e nao vincular emails de outros dominios a empresa.
+  const registryEmail=String(r.email||r.correio_eletronico||'').trim().toLowerCase();
+  const websiteEmails=pages.flatMap(page=>pageEmails(page,domain));
+  const registryEmailConfirmed=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registryEmail)
+    && registryEmail.split('@')[1]===domain;
+  const email=websiteEmails[0]||(registryEmailConfirmed?registryEmail:null);
+  const emailSource=websiteEmails.length?'website':registryEmailConfirmed?'official_registry':null;
+  const qualityScore=30+20+15+(email?20:0)+(cnpjPage?10:0)+(phoneRegistryMatch?5:0);
   // DIGITALE_COMMERCIAL_OBSERVATION_CALLBACK_V2
   // Observacao opcional; nao modifica a prova nem a entrega.
   if (typeof onCommercialObservation === 'function') {
@@ -485,5 +524,5 @@ export async function verifyCandidate(candidate,{fetchPage=getPublic, fetchSearc
     }
   }
 
-   return {version:2,buyer_segment:resolvedBuyerSegment,email_search_completed:true,owner_id:OWNER,checked_at:new Date().toISOString(),cnpj,phone:number,company:r.nome_fantasia||r.razao_social,domain,email,phone_call_tested:false,approval_basis:legalNameEligible?'legal_name_confeccao':'allowed_cnae',registry:{url:record.url,cnpj,active:true,situacao_cadastral:r.situacao_cadastral,mei_status:r.mei_status,manufacturing:manufacturing(r),primary_cnae:r.cnae_fiscal,secondary_cnaes:(r.cnaes_secundarios||[]).map(a=>a.codigo),uf,municipio:r.municipio||null,legal_name:r.razao_social,trade_name:r.nome_fantasia||null,source_updated_at:r.updated_at||null},identity_verified:true,identity_method:cnpjPage?'cnpj_publicado':'nome_e_telefone_cadastral',identity_evidence:{company_name_match:companyNameMatch,phone_registry_match:phoneRegistryMatch,cnpj_published:Boolean(cnpjPage),registry_url:record.url},website:{url:phonePage?.url||cnpjPage?.url||origin+'/',cnpj_url:cnpjPage?.url||null,cnpj_match:Boolean(cnpjPage),phone_match:Boolean(sitePhone),phone_source:phoneSource},discovery_url:root};
+   return {version:2,buyer_segment:resolvedBuyerSegment,email_search_completed:true,owner_id:OWNER,checked_at:new Date().toISOString(),cnpj,phone:number,company:r.nome_fantasia||r.razao_social,domain,email,email_source:emailSource,quality_score:qualityScore,contact_quality:{cnpj_confirmed:true,phone_confirmed:true,email_confirmed:Boolean(email),email_source:emailSource,phone_source:phoneSource},phone_call_tested:false,approval_basis:legalNameEligible?'legal_name_confeccao':'allowed_cnae',registry:{url:record.url,cnpj,active:true,situacao_cadastral:r.situacao_cadastral,mei_status:r.mei_status,manufacturing:manufacturing(r),primary_cnae:r.cnae_fiscal,secondary_cnaes:(r.cnaes_secundarios||[]).map(a=>a.codigo),uf,municipio:r.municipio||null,legal_name:r.razao_social,trade_name:r.nome_fantasia||null,source_updated_at:r.updated_at||null},identity_verified:true,identity_method:cnpjPage?'cnpj_publicado':'nome_e_telefone_cadastral',identity_evidence:{company_name_match:companyNameMatch,phone_registry_match:phoneRegistryMatch,cnpj_published:Boolean(cnpjPage),registry_url:record.url},website:{url:phonePage?.url||cnpjPage?.url||origin+'/',cnpj_url:cnpjPage?.url||null,cnpj_match:Boolean(cnpjPage),phone_match:Boolean(sitePhone),phone_source:phoneSource},discovery_url:root};
 }

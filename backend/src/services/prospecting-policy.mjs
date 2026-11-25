@@ -15,7 +15,8 @@ export function windowAt(now = new Date()) {
   let low=now.getTime()-36*3600000,high=now.getTime();
   while(high-low>1){const middle=Math.floor((low+high)/2);if(localDate(middle)<date)low=middle;else high=middle;}
   const dayStart = new Date(high);
-  return {date, hour, open:true, hourStart:localHour, dayStart};
+  const weekday=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short'}).format(now);
+  return {date, hour, open:weekday!=='Sat'&&weekday!=='Sun', hourStart:localHour, dayStart};
 }
 export const sqlDate = date => date.toISOString().slice(0,23).replace('T',' ');
 export function quota(hourCount, dayCount, now = new Date(), settings=DEFAULT_SETTINGS) {
@@ -23,6 +24,6 @@ export function quota(hourCount, dayCount, now = new Date(), settings=DEFAULT_SE
 }
 export function nextRun(now = new Date()) {
   let candidate = new Date(Math.ceil((now.getTime()+1000)/60000)*60000);
-  for(let i=0;i<1500;i++,candidate=new Date(candidate.getTime()+60000)) if(windowAt(candidate).open) return candidate;
+  for(let i=0;i<11000;i++,candidate=new Date(candidate.getTime()+60000)) if(windowAt(candidate).open) return candidate;
   throw Error('schedule_unavailable');
 }

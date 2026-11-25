@@ -1,7 +1,7 @@
 import {hasConfeccaoLegalName} from './prospecting-approval-policy.mjs';
 export const STATES = {AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
 import {createHash} from 'node:crypto';
-export const DEFAULT_SETTINGS = Object.freeze({enabled:true,inactivity_months:3,hourly_target:20,daily_target:160,states:Object.freeze(Object.keys(STATES).sort()),segments:Object.freeze(['moda fitness','moda praia','moda esportiva','moda íntima','vestuário','lingerie','uniformes'])});
+export const DEFAULT_SETTINGS = Object.freeze({enabled:true,inactivity_months:3,hourly_target:20,daily_target:100,states:Object.freeze(Object.keys(STATES).sort()),segments:Object.freeze(['moda fitness','moda praia','moda esportiva','moda íntima','vestuário','lingerie','uniformes'])});
 export function settingsRevision(settings) {
   return createHash('sha256').update(JSON.stringify(validateSettings(settings))).digest('hex');
 }
@@ -21,12 +21,24 @@ export function validateSettings(input) {
   if(!Number.isInteger(input.daily_target)||input.daily_target<1||input.daily_target>1000||input.daily_target<input.hourly_target)throw Error('A quantidade diária deve ser de 1 a 1.000 e não pode ser menor que a quantidade por hora.');
   if(!Array.isArray(input.states)||!input.states.length||input.states.length>27||input.states.some(uf=>!Object.hasOwn(STATES,uf)))throw Error('Selecione pelo menos um estado válido.');
   if(!Array.isArray(input.segments)||!input.segments.length||input.segments.length>20||input.segments.some(s=>typeof s!=='string'||s.trim().length<2||s.trim().length>80||/[\r\n\x00-\x1f]/.test(s)))throw Error('Informe de 1 a 20 segmentos, com 2 a 80 caracteres cada.');
-  return {enabled:input.enabled,inactivity_months:months,hourly_target:input.hourly_target,daily_target:input.daily_target,states:[...new Set(input.states)].sort(),segments:[...new Set(input.segments.map(s=>s.trim()))],cnaes:[...new Set(cnaes.map(c=>c.replace(/\D/g,'')))].sort()};
+  return {enabled:input.enabled,inactivity_months:months,hourly_target:input.hourly_target,daily_target:input.daily_target,states:['SP'],segments:['confecção de roupas','fabricação de roupas','moda fitness','moda praia','moda esportiva','moda feminina','moda masculina','moda infantil','lingerie','uniformes'],cnaes:[...new Set(cnaes.map(c=>c.replace(/\D/g,'')))].sort()};
 }
 // CNAE exato da atividade principal, sem aceitar um grupo genérico ou atividade secundária.
+// DIGITALE_ONLY_SP_CLOTHING_20261125 — atividade de vestuario, nao varejo.
+// CNAEs da divisao 14 relacionados a roupas: 1411, 1412, 1413, 1420.
+// Exclui exclusivamente acessorios (1414), textiles, lojas e outras industrias.
+export function isClothingManufacturerRegistry(registry) {
+  const fields=[registry?.cnae_fiscal,registry?.primary_cnae,registry?.cnae,
+    ...(Array.isArray(registry?.cnaes_secundarios)?registry.cnaes_secundarios:[]),
+    ...(Array.isArray(registry?.secondary_cnaes)?registry.secondary_cnaes:[])];
+  return fields.some(value=>{
+    const raw=typeof value==='object'&&value!==null?(value.codigo||value.code||value.cnae):value;
+    const digits=String(raw||'').replace(/\D/g,'');
+    return /^(1411|1412|1413|1420)\d{3}$/.test(digits);
+  });
+}
 export function matchesCnae(registry,settings=DEFAULT_SETTINGS) {
-  const required=settings.cnaes||[];
-  return hasConfeccaoLegalName(registry?.razao_social || registry?.legal_name)||!required.length||required.includes(String(registry?.cnae_fiscal??registry?.primary_cnae??'').replace(/\D/g,''));
+  return isClothingManufacturerRegistry(registry);
 }
 export async function getSettings(connection) {
   const [rows]=await connection.execute('SELECT settings FROM digitale_ai_settings WHERE id=1');
@@ -34,5 +46,5 @@ export async function getSettings(connection) {
   return validateSettings(typeof rows[0].settings==='string'?JSON.parse(rows[0].settings):rows[0].settings);
 }
 export function matchesRegion(registry,settings=DEFAULT_SETTINGS) {
-  return settings.states.includes(String(registry?.uf||'').trim().toUpperCase());
+  return String(registry?.uf||'').trim().toUpperCase()==='SP';
 }

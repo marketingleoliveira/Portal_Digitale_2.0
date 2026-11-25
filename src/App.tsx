@@ -51,6 +51,7 @@ import CRM from "./pages/CRM";
 import CRMFeeder from "./pages/CRMFeeder";
 import DigitaleAI from "./pages/DigitaleAI";
 import ProspectingAI from "./pages/ProspectingAI";
+import CddLeads from "./pages/CddLeads";
 import Agendor from "./pages/Agendor";
 
 import Agendamentos from "./pages/Agendamentos";
@@ -141,6 +142,7 @@ const App = () => (
                   <Route path="/crm" element={<ProtectedRoute allowedRoles={['dev', 'vendedor', 'gerente', 'admin', 'diretoria']}><CRM /></ProtectedRoute>} />
                   <Route path="/ia-digitale" element={<ProtectedRoute allowedEmails={['marketing@digitaletextil.com.br']}><DigitaleAI /></ProtectedRoute>} />
                   <Route path="/prospeccao-ia" element={<ProtectedRoute allowedEmails={['marketing@digitaletextil.com.br']}><ProspectingAI /></ProtectedRoute>} />
+                  <Route path="/prospeccao-ia/cdd-leads" element={<ProtectedRoute allowedEmails={['marketing@digitaletextil.com.br']}><CddLeads /></ProtectedRoute>} />
                   <Route path="/agendor" element={<ProtectedRoute><Agendor /></ProtectedRoute>} />
 
                   <Route path="/agendamentos" element={<ProtectedRoute allowedRoles={['dev', 'vendedor', 'gerente', 'admin', 'diretoria']}><Agendamentos /></ProtectedRoute>} />

@@ -37,6 +37,7 @@ import { createRealtimeServer } from "./lib/realtime.js";
 
 import digitaleAIRoutes from './routes/digitale-ai.js';
 import prospectingDashboardRoutes from './routes/prospecting-dashboard.js';
+import cddMonitorRoutes from './routes/cdd-monitor.js';
 import rafaelAttendanceRoutes from './routes/rafael-attendance.js';
 
 const app = express();
@@ -144,6 +145,7 @@ app.use("/api/integrations/ai-leads", aiLeadRoutes);
 app.use("/api/integrations/prospecting-leads", prospectingLeadRoutes);
 app.use("/api/digitale-ai", digitaleAIRoutes);
 app.use("/api/prospecting-dashboard", prospectingDashboardRoutes);
+app.use("/api/cdd-monitor", cddMonitorRoutes);
 app.use("/api/rafael-attendance", rafaelAttendanceRoutes);
 app.use("/api/agendor-unread", agendorUnreadRoutes);
 app.use("/api/agendor-meetings", agendorMeetingRoutes);

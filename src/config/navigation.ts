@@ -78,6 +78,7 @@ export const navItems: NavItem[] = [
   { label: "IA DIGITALE", href: "/ia-digitale", icon: Briefcase, allowedEmails: ["marketing@digitaletextil.com.br"], roles: ["dev", "admin", "gerente", "sdr", "diretoria", "marketing", "vendedor", "criacao", "qualidade", "financeiro"], children: [
     { label: "Configuração e clientes", href: "/ia-digitale", icon: Settings, allowedEmails: ["marketing@digitaletextil.com.br"], roles: ["dev", "admin", "gerente", "sdr", "diretoria", "marketing", "vendedor", "criacao", "qualidade", "financeiro"] },
     { label: "Monitoramento da prospecção", href: "/prospeccao-ia", icon: Briefcase, allowedEmails: ["marketing@digitaletextil.com.br"], roles: ["dev", "admin", "gerente", "sdr", "diretoria", "marketing", "vendedor", "criacao", "qualidade", "financeiro"] },
+    { label: "CDD LEADS", href: "/prospeccao-ia/cdd-leads", icon: BarChart3, allowedEmails: ["marketing@digitaletextil.com.br"], roles: ["dev", "admin", "gerente", "sdr", "diretoria", "marketing", "vendedor", "criacao", "qualidade", "financeiro"] },
   ] },
   { label: "Agendor", href: "/agendor", icon: Briefcase, roles: ["dev", "admin", "gerente", "vendedor", "criacao", "sdr", "marketing", "qualidade", "financeiro", "diretoria"] },
   {
