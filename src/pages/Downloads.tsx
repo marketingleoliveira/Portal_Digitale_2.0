@@ -8,9 +8,10 @@ import { FileItem, AppRole, isDevLevel } from '@/types/auth';
 import { 
   FileText, Download, Search, Loader2, FolderOpen, Eye, X,
   FileImage, FileVideo, FileAudio, FileSpreadsheet, FileType, File, Globe, ExternalLink,
-  ChevronDown, ChevronRight, AlertTriangle, List
+  ChevronDown, ChevronRight, AlertTriangle, List, Check, ArrowLeft
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAccessLog } from '@/hooks/useAccessLog';
 import { useToast } from '@/hooks/use-toast';
@@ -35,7 +36,8 @@ const Downloads: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>('all');
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileCategory, setMobileCategory] = useState<string | null>(null);
   const [subcategories, setSubcategories] = useState<{id: string, name: string, category_id: string}[]>([]);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [showBrokenList, setShowBrokenList] = useState(false);
@@ -156,33 +158,8 @@ const Downloads: React.FC = () => {
   };
 
   const handleCategoryClick = (category: string) => {
-    if (category === 'all') {
-      setSelectedCategory('all');
-      setSelectedSubcategory('all');
-      setExpandedCategory(null);
-      return;
-    }
-
-    if (categoryHasSubcategories(category)) {
-      // Toggle expansion
-      if (expandedCategory === category) {
-        setExpandedCategory(null);
-      } else {
-        setExpandedCategory(category);
-      }
-      // Select the category but not a specific subcategory
-      setSelectedCategory(category);
-      setSelectedSubcategory('all');
-    } else {
-      // No subcategories, just select the category
-      setSelectedCategory(category);
-      setSelectedSubcategory('all');
-      setExpandedCategory(null);
-    }
-  };
-
-  const handleSubcategoryClick = (subcategoryId: string) => {
-    setSelectedSubcategory(subcategoryId);
+    setSelectedCategory(category);
+    setSelectedSubcategory('all');
   };
 
   const filteredFiles = files.filter((file) => {
@@ -426,86 +403,61 @@ const Downloads: React.FC = () => {
           );
         })()}
 
-        {/* Search */}
+        {/* Cascading category menu */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar materiais..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input aria-label="Buscar materiais" placeholder="Buscar materiais..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+              </div>
+              <DropdownMenu open={menuOpen} onOpenChange={open => {setMenuOpen(open); if (!open) setMobileCategory(null);}}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="max-w-full sm:max-w-[380px] justify-between gap-2">
+                    <FolderOpen className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{selectedCategory === 'all' ? 'Todas as categorias' : selectedCategory}{selectedSubcategory !== 'all' ? ' / ' + (getSubcategoriesForCategory(selectedCategory).find(s => s.id === selectedSubcategory)?.name || '') : ''}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[min(290px,calc(100vw-32px))] max-h-[65vh] overflow-y-auto">
+                  <div className="hidden md:block">
+                    <DropdownMenuItem onSelect={() => handleCategoryClick('all')} className="gap-2">
+                      <FolderOpen className="w-4 h-4 shrink-0" />Todas as categorias{selectedCategory === 'all' && <Check className="ml-auto h-4 w-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {categories.map(category => categoryHasSubcategories(category) ? (
+                      <DropdownMenuSub key={category}>
+                        <DropdownMenuSubTrigger className={'gap-2 py-2 ' + (selectedCategory === category ? 'bg-accent font-medium' : '')}>
+                          <FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" /><span className="flex-1 whitespace-normal">{category}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent className="w-[250px] max-h-[65vh] overflow-y-auto">
+                            <DropdownMenuItem onSelect={() => handleCategoryClick(category)}>Todas{selectedCategory === category && selectedSubcategory === 'all' && <Check className="ml-auto h-4 w-4" />}</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {getSubcategoriesForCategory(category).map(sub => <DropdownMenuItem key={sub.id} onSelect={() => {setSelectedCategory(category); setSelectedSubcategory(sub.id);}} className="py-2 whitespace-normal">{sub.name}{selectedCategory === category && selectedSubcategory === sub.id && <Check className="ml-auto h-4 w-4 shrink-0" />}</DropdownMenuItem>)}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    ) : <DropdownMenuItem key={category} onSelect={() => handleCategoryClick(category)} className="gap-2 py-2"><FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" /><span className="flex-1 whitespace-normal">{category}</span>{selectedCategory === category && <Check className="h-4 w-4 shrink-0" />}</DropdownMenuItem>)}
+                  </div>
+                  <div className="md:hidden">
+                    {mobileCategory === null ? <>
+                      <DropdownMenuItem onSelect={() => handleCategoryClick('all')}>Todas as categorias{selectedCategory === 'all' && <Check className="ml-auto h-4 w-4" />}</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {categories.map(category => <DropdownMenuItem key={category} className="gap-2 py-2" onSelect={e => {if (categoryHasSubcategories(category)) {e.preventDefault(); setMobileCategory(category);} else handleCategoryClick(category);}}><FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="flex-1 whitespace-normal">{category}</span>{categoryHasSubcategories(category) ? <ChevronRight className="h-4 w-4 shrink-0" /> : selectedCategory === category && <Check className="h-4 w-4 shrink-0" />}</DropdownMenuItem>)}
+                    </> : <>
+                      <DropdownMenuItem onSelect={e => {e.preventDefault(); setMobileCategory(null);}} className="gap-2 font-medium"><ArrowLeft className="h-4 w-4" />{mobileCategory}</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => handleCategoryClick(mobileCategory)}>Todas</DropdownMenuItem>
+                      {getSubcategoriesForCategory(mobileCategory).map(sub => <DropdownMenuItem key={sub.id} onSelect={() => {setSelectedCategory(mobileCategory); setSelectedSubcategory(sub.id);}} className="py-2 whitespace-normal">{sub.name}{selectedCategory === mobileCategory && selectedSubcategory === sub.id && <Check className="ml-auto h-4 w-4 shrink-0" />}</DropdownMenuItem>)}
+                    </>}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {selectedCategory !== 'all' && <Button variant="ghost" size="sm" onClick={() => handleCategoryClick('all')} className="shrink-0 gap-1 text-muted-foreground"><X className="h-4 w-4" />Limpar</Button>}
             </div>
           </CardContent>
         </Card>
-
-        {/* Category Buttons */}
-        {categories.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={selectedCategory === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleCategoryClick('all')}
-                className="gap-2"
-              >
-                <FolderOpen className="w-4 h-4" />
-                Todas as Categorias
-              </Button>
-              {categories.map((category) => {
-                const hasSubcats = categoryHasSubcategories(category);
-                const isExpanded = expandedCategory === category;
-                const isSelected = selectedCategory === category;
-                
-                return (
-                  <Button
-                    key={category}
-                    variant={isSelected ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleCategoryClick(category)}
-                    className="gap-1"
-                  >
-                    {category}
-                    {hasSubcats && (
-                      isExpanded ? (
-                        <ChevronDown className="w-4 h-4 ml-1" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      )
-                    )}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            {/* Subcategories Row */}
-            {expandedCategory && categoryHasSubcategories(expandedCategory) && (
-              <div className="flex flex-wrap gap-2 pl-4 animate-fade-in">
-                <Button
-                  variant={selectedSubcategory === 'all' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleSubcategoryClick('all')}
-                  className="text-sm h-8"
-                >
-                  Todas
-                </Button>
-                {getSubcategoriesForCategory(expandedCategory).map((subcat: any) => (
-                  <Button
-                    key={subcat.id}
-                    variant={selectedSubcategory === subcat.id ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => handleSubcategoryClick(subcat.id)}
-                    className="text-sm h-8"
-                  >
-                    {subcat.name}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Files Grid */}
         {loading ? (
